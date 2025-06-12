@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Pricing Bulk Hat Calculator v11 (UI Final Polishing)</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+        .container { background: #fff; padding: 20px; border-radius: 12px; max-width: 95%; margin: 20px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h2 { text-align: center; margin-bottom: 20px; font-size: 24px; }
+        label { font-weight: bold; font-size: 18px; margin-top: 10px; display: block; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 15px; margin-top: 5px; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; box-sizing: border-box; }
+        input[type="number"] { max-width: 150px; } /* make quantity box smaller */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+        .result { margin-top: 30px; padding: 15px; background: #f9fcff; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; line-height: 1.6; }
+        button { margin-top: 15px; padding: 12px 20px; font-size: 16px; border-radius: 6px; border: none; cursor: pointer; width: 100%; }
+        #adminPanel { display: none; margin-bottom: 20px; }
+        .collapse-btn { border: 1px solid #bbb; color: #555; background: #fff; }
+        .calculate-btn { background: #000000; color: #fff; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>HEADWEAR BULK PRICING CALCULATOR</h2>
+
+    <button class="collapse-btn" onclick="toggleAdmin()">⚙ Edit Pricing Tiers</button>
+    <div id="adminPanel">
+        <h3>Pricing Tiers</h3>
+        <table id="pricingTable">
+            <thead><tr><th>Min Qty</th><th>Max Qty</th><th>Price per Hat</th></tr></thead>
+            <tbody>
+            <tr><td><input value="1"></td><td><input value="5"></td><td><input value="29"></td></tr>
+            <tr><td><input value="6"></td><td><input value="11"></td><td><input value="26"></td></tr>
+            <tr><td><input value="12"></td><td><input value="23"></td><td><input value="21"></td></tr>
+            <tr><td><input value="24"></td><td><input value="35"></td><td><input value="19"></td></tr>
+            <tr><td><input value="36"></td><td><input value="47"></td><td><input value="17"></td></tr>
+            <tr><td><input value="48"></td><td><input value="71"></td><td><input value="15"></td></tr>
+            <tr><td><input value="72"></td><td><input value="99"></td><td><input value="13"></td></tr>
+            <tr><td><input value="100"></td><td><input value="9999"></td><td><input value="11"></td></tr>
+            </tbody>
+        </table>
+        <div style="margin-top:10px;">
+            <button onclick="calculate()" class="calculate-btn">Apply Pricing Changes</button>
+        </div>
+    </div>
+
+    <label for="quantity">QTY:</label>
+    <input type="number" id="quantity" value="12" min="1">
+
+    <label for="locations">Number of Embroidery Locations:</label>
+    <select id="locations">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+    </select>
+
+    <label for="puff">3D Puff:</label>
+    <select id="puff">
+        <option value="No" selected>No</option>
+        <option value="Yes">Yes</option>
+    </select>
+
+    <button onclick="calculate()" class="calculate-btn">GET PRICING</button>
+
+    <div class="result" id="results"></div>
+    <div class="result" id="breakdown"></div>
+</div>
+
+<script>
+const costs = {
+    blank: 4.00, embroidery: 2.50, extraLocation: 1.50, puff: 3.50, packaging: 0.50,
+    digitizingFirst: 5.00, digitizingExtra: 2.50, shipping: 6.50, listingFee: 0.20,
+    transactionFeeRate: 0.065, paymentProcessingRate: 0.03, paymentProcessingFixed: 0.25
+};
+
+function toggleAdmin() {
+    const panel = document.getElementById("adminPanel");
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+function getPriceTiers() {
+    let rows = document.querySelectorAll("#pricingTable tbody tr");
+    let tiers = [];
+    rows.forEach(row => {
+        let inputs = row.querySelectorAll("input");
+        tiers.push({
+            min: parseInt(inputs[0].value),
+            max: parseInt(inputs[1].value),
+            price: parseFloat(inputs[2].value)
+        });
+    });
+    return tiers;
+}
+
+function calculate() {
+    const qty = parseInt(document.getElementById("quantity").value);
+    const locations = parseInt(document.getElementById("locations").value);
+    const puff = document.getElementById("puff").value === "Yes";
+    const priceTiers = getPriceTiers();
+
+    const priceTier = priceTiers.find(t => qty >= t.min && qty <= t.max);
+    const pricePerHat = priceTier.price;
+    const salePrice = pricePerHat * qty;
+
+    const embroideryPerHat = costs.embroidery + (locations - 1) * costs.extraLocation;
+    const totalEmbroidery = embroideryPerHat * qty;
+    const totalPuff = puff ? costs.puff * qty : 0;
+    const totalPackaging = costs.packaging * qty;
+    const digitizing = costs.digitizingFirst + (locations - 1) * costs.digitizingExtra;
+    const blankTotal = costs.blank * qty;
+
+    const transactionFee = salePrice * costs.transactionFeeRate;
+    const paymentProcessingFee = salePrice * costs.paymentProcessingRate + costs.paymentProcessingFixed;
+    const etsyFees = transactionFee + paymentProcessingFee + costs.listingFee;
+
+    const totalCost = blankTotal + totalEmbroidery + totalPuff + totalPackaging + digitizing + costs.shipping + etsyFees;
+    const profit = salePrice - totalCost;
+    const profitPerHat = profit / qty;
+    const margin = (profit / salePrice) * 100;
+
+    document.getElementById("results").innerHTML = `
+        <b>Customer Cost Summary:</b><br>
+        Sale Price (Customer): $${salePrice.toFixed(2)}<br>
+        Price Per Hat (Customer): $${pricePerHat.toFixed(2)}
+    `;
+
+    document.getElementById("breakdown").innerHTML = `
+        <b>Internal Cost Breakdown:</b><br>
+        Blank Hat Cost (Per Unit): $${costs.blank.toFixed(2)}<br>
+        Blank Hat Total Cost: $${blankTotal.toFixed(2)}<br>
+        Embroidery Cost: $${totalEmbroidery.toFixed(2)}<br>
+        3D Puff Cost: $${totalPuff.toFixed(2)}<br>
+        Packaging Cost: $${totalPackaging.toFixed(2)}<br>
+        Digitizing Cost: $${digitizing.toFixed(2)}<br>
+        Shipping Cost (Internal Only): $${costs.shipping.toFixed(2)}<br>
+        Etsy Listing Fee: $${costs.listingFee.toFixed(2)}<br>
+        Etsy Transaction Fee: $${transactionFee.toFixed(2)}<br>
+        Payment Processing Fee: $${paymentProcessingFee.toFixed(2)}<br>
+        Total Cost: $${totalCost.toFixed(2)}<br>
+        Profit: $${profit.toFixed(2)}<br>
+        Profit per Hat: $${profitPerHat.toFixed(2)}<br>
+        Margin %: ${margin.toFixed(2)}%
+    `;
+}
+</script>
+</body>
+</html>
