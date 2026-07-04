@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cobra Digitizing Dashboard — Mockup</title>
+<style>
+  :root{
+    --bg:#eef1f6;
+    --panel:#ffffff;
+    --ink:#0f172a;
+    --muted:#64748b;
+    --line:#e6eaf1;
+    --brand:#111827;
+    --accent:#f0a500;      /* thread gold */
+    --accent2:#4f46e5;     /* indigo */
+    --teal:#0ea5a4;
+    --rose:#e11d48;
+    --green:#16a34a;
+    --amber:#d97706;
+    --slate:#334155;
+    --shadow:0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",Inter,Arial,system-ui,sans-serif;
+    background:var(--bg); color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    width:1440px;
+  }
+  .app{display:grid; grid-template-columns:248px 1fr; min-height:940px}
+
+  /* ---------- Sidebar ---------- */
+  .side{background:#0b1220; color:#cbd5e1; padding:22px 18px; display:flex; flex-direction:column; gap:6px}
+  .logo{display:flex; align-items:center; gap:11px; padding:6px 6px 20px}
+  .logo .mark{
+    width:38px;height:38px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),#f6c453);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1300;font-size:19px;
+    box-shadow:0 6px 16px rgba(240,165,0,.35)
+  }
+  .logo .name{font-weight:700;color:#fff;font-size:16px;line-height:1.1}
+  .logo .sub{font-size:11px;color:#7c8aa0;letter-spacing:.4px;text-transform:uppercase}
+  .nav-label{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:#5b6b83;margin:16px 8px 4px}
+  .nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;color:#aeb9cc;text-decoration:none;font-size:14px;font-weight:500}
+  .nav a .ic{width:18px;text-align:center;opacity:.9}
+  .nav a.active{background:#182338;color:#fff}
+  .nav a.active .ic{color:var(--accent)}
+  .side .foot{margin-top:auto;background:#101a2e;border:1px solid #1c2942;border-radius:12px;padding:12px 13px}
+  .side .foot .t{font-size:12.5px;color:#cbd5e1;font-weight:600}
+  .side .foot .s{font-size:11px;color:#7c8aa0;margin-top:2px}
+  .side .foot .bar{height:6px;background:#22314c;border-radius:99px;margin-top:9px;overflow:hidden}
+  .side .foot .bar i{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--accent),#f6c453)}
+
+  /* ---------- Main ---------- */
+  .main{padding:22px 28px 30px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .topbar h1{font-size:22px;margin:0;font-weight:750}
+  .topbar .crumb{font-size:12.5px;color:var(--muted);margin-bottom:3px}
+  .tb-right{display:flex;align-items:center;gap:12px}
+  .search{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:13px;color:var(--muted);width:260px;box-shadow:var(--shadow);display:flex;gap:8px;align-items:center}
+  .btn{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:var(--shadow)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#0ea5a4);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+
+  /* KPI row */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .kpi .cap{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.2px}
+  .kpi .val{font-size:30px;font-weight:780;margin-top:8px;letter-spacing:-.5px}
+  .kpi .val small{font-size:15px;font-weight:600;color:var(--muted)}
+  .kpi .delta{font-size:12px;font-weight:650;margin-top:7px;display:inline-flex;gap:5px;align-items:center}
+  .up{color:var(--green)} .down{color:var(--rose)}
+  .kpi .spark{position:absolute;right:14px;top:14px;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .b-gold{background:#fef4dc;color:#b8860b}
+  .b-ind{background:#eceafe;color:#4f46e5}
+  .b-teal{background:#dcf6f5;color:#0e8a89}
+  .b-rose{background:#fde3e9;color:#e11d48}
+
+  /* content grid */
+  .grid{display:grid;grid-template-columns:1fr 340px;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px 20px}
+  .card h3{margin:0;font-size:15px;font-weight:700}
+  .card .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .card .hd .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .pill-tabs{display:flex;gap:6px}
+  .pill-tabs span{font-size:11.5px;padding:5px 10px;border-radius:8px;color:var(--muted);background:#f3f5f9;font-weight:600}
+  .pill-tabs span.on{background:var(--ink);color:#fff}
+
+  /* bar chart */
+  .chart{display:flex;align-items:flex-end;gap:18px;height:190px;padding:14px 6px 0}
+  .bargroup{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}
+  .bars{display:flex;gap:5px;align-items:flex-end;height:100%}
+  .bar{width:16px;border-radius:5px 5px 0 0}
+  .bar.q{background:#c7cfdd}
+  .bar.d{background:var(--accent2)}
+  .bar.a{background:var(--accent)}
+  .bl{font-size:11.5px;color:var(--muted);font-weight:600}
+  .legend{display:flex;gap:16px;margin-top:12px;font-size:12px;color:var(--slate)}
+  .legend b{font-weight:600}
+  .dot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:middle}
+
+  /* donut */
+  .donut-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:6px}
+  .donut{position:relative;width:180px;height:180px}
+  .donut .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut .ctr b{font-size:30px;font-weight:800;line-height:1}
+  .donut .ctr span{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .leg2{width:100%;display:flex;flex-direction:column;gap:9px;margin-top:2px}
+  .leg2 .r{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+  .leg2 .r .l{display:flex;align-items:center;color:var(--slate)}
+  .leg2 .r b{font-weight:700}
+
+  /* table */
+  .tablecard{margin-top:16px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{text-align:left;color:var(--muted);font-size:11px;letter-spacing:.6px;text-transform:uppercase;font-weight:700;padding:10px 10px;border-bottom:1px solid var(--line)}
+  tbody td{padding:12px 10px;border-bottom:1px solid #f1f4f9;vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  .design{display:flex;align-items:center;gap:11px}
+  .swatch{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;font-weight:700}
+  .design .dn{font-weight:650} .design .dm{font-size:11.5px;color:var(--muted)}
+  .cust{font-weight:600}
+  .mono{font-variant-numeric:tabular-nums}
+  .tag{font-size:11px;font-weight:700;padding:4px 9px;border-radius:99px;display:inline-block}
+  .t-queue{background:#eef1f6;color:#475569}
+  .t-dig{background:#eceafe;color:#4f46e5}
+  .t-appr{background:#fff3d6;color:#b8860b}
+  .t-done{background:#dff5e6;color:#15803d}
+  .puffY{color:var(--amber);font-weight:700}
+  .puffN{color:var(--muted)}
+  .price{font-weight:750}
+  .foot-note{margin-top:18px;font-size:11.5px;color:#9aa6b8;text-align:center}
+  .badge-live{font-size:11px;font-weight:700;color:var(--green);background:#e7f7ec;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:6px}
+  .blip{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;box-shadow:0 0 0 3px rgba(22,163,74,.18)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="logo">
+      <div class="mark">C</div>
+      <div>
+        <div class="name">Cobra Digitize</div>
+        <div class="sub">Apparel Hotline</div>
+      </div>
+    </div>
+    <div class="nav-label">Workspace</div>
+    <nav class="nav">
+      <a class="active"><span class="ic">▤</span> Digitizing Board</a>
+      <a><span class="ic">✎</span> New Job Intake</a>
+      <a><span class="ic">◷</span> Approval Queue</a>
+      <a><span class="ic">◈</span> Stitch Files</a>
+    </nav>
+    <div class="nav-label">Analytics</div>
+    <nav class="nav">
+      <a><span class="ic">▦</span> Throughput</a>
+      <a><span class="ic">＄</span> Pricing &amp; Margin</a>
+      <a><span class="ic">☷</span> Customers</a>
+    </nav>
+    <div class="nav-label">Setup</div>
+    <nav class="nav">
+      <a><span class="ic">⚙</span> Pricing Tiers</a>
+      <a><span class="ic">⤢</span> Sheet Sync</a>
+    </nav>
+    <div class="foot">
+      <div class="t">Sheet Sync · Cobra_Digitizing.xlsx</div>
+      <div class="s">Last synced 2 min ago · 142 rows</div>
+      <div class="bar"><i></i></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="crumb">Workspace / Digitizing Board</div>
+        <h1>Digitizing Dashboard</h1>
+      </div>
+      <div class="tb-right">
+        <span class="badge-live"><span class="blip"></span> Live · synced from Sheets</span>
+        <div class="search">⌕ Search designs, customers…</div>
+        <button class="btn ghost">⭳ Export</button>
+        <button class="btn">＋ New Digitizing Job</button>
+        <div class="avatar">MA</div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi">
+        <div class="spark b-gold">◷</div>
+        <div class="cap">Jobs in Queue</div>
+        <div class="val">18</div>
+        <div class="delta up">▲ 4 <span style="color:var(--muted);font-weight:500">vs yesterday</span></div>
+      </div>
+      <div class="kpi">
+        <div class="spark b-ind">✎</div>
+        <div class="cap">In Digitizing</div>
+        <div class="val">7</div>
+        <div class="delta up">▲ 2 <span style="color:var(--muted);font-weight:500">active punchers</span></div>
+      </div>
+      <div class="kpi">
+        <div class="spark b-rose">◈</div>
+        <div class="cap">Awaiting Approval</div>
+        <div class="val">5</div>
+        <div class="delta down">▼ 1 <span style="color:var(--muted);font-weight:500">avg wait 3.2h</span></div>
+      </div>
+      <div class="kpi">
+        <div class="spark b-teal">＄</div>
+        <div class="cap">Digitizing Rev · MTD</div>
+        <div class="val">$4,910</div>
+        <div class="delta up">▲ 12.6% <span style="color:var(--muted);font-weight:500">on 384 jobs</span></div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid">
+      <div class="card">
+        <div class="hd">
+          <div>
+            <h3>Weekly Throughput</h3>
+            <div class="sub">Jobs queued → digitized → approved</div>
+          </div>
+          <div class="pill-tabs"><span>Day</span><span class="on">Week</span><span>Month</span></div>
+        </div>
+        <div class="chart">
+          <!-- each group: queued, digitized, approved -->
+          <div class="bargroup"><div class="bars"><div class="bar q" style="height:52%"></div><div class="bar d" style="height:40%"></div><div class="bar a" style="height:33%"></div></div><div class="bl">Mon</div></div>
+          <div class="bargroup"><div class="bars"><div class="bar q" style="height:70%"></div><div class="bar d" style="height:58%"></div><div class="bar a" style="height:48%"></div></div><div class="bl">Tue</div></div>
+          <div class="bargroup"><div class="bars"><div class="bar q" style="height:60%"></div><div class="bar d" style="height:66%"></div><div class="bar a" style="height:55%"></div></div><div class="bl">Wed</div></div>
+          <div class="bargroup"><div class="bars"><div class="bar q" style="height:85%"></div><div class="bar d" style="height:72%"></div><div class="bar a" style="height:60%"></div></div><div class="bl">Thu</div></div>
+          <div class="bargroup"><div class="bars"><div class="bar q" style="height:96%"></div><div class="bar d" style="height:80%"></div><div class="bar a" style="height:71%"></div></div><div class="bl">Fri</div></div>
+          <div class="bargroup"><div class="bars"><div class="bar q" style="height:44%"></div><div class="bar d" style="height:38%"></div><div class="bar a" style="height:30%"></div></div><div class="bl">Sat</div></div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:#c7cfdd"></i><b>Queued</b></span>
+          <span><i class="dot" style="background:var(--accent2)"></i><b>Digitized</b></span>
+          <span><i class="dot" style="background:var(--accent)"></i><b>Approved</b></span>
+          <span style="margin-left:auto;color:var(--muted)">Avg turnaround <b style="color:var(--ink)">6.4 h</b></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <div><h3>Pipeline Status</h3><div class="sub">30 open jobs</div></div>
+        </div>
+        <div class="donut-wrap">
+          <div class="donut">
+            <svg width="180" height="180" viewBox="0 0 180 180">
+              <circle cx="90" cy="90" r="66" fill="none" stroke="#eef1f6" stroke-width="26"/>
+              <!-- circumference ~414.7; segments: queue 60%, dig 23%, appr 17% -->
+              <circle cx="90" cy="90" r="66" fill="none" stroke="#94a3b8" stroke-width="26"
+                stroke-dasharray="248.8 414.7" stroke-dashoffset="0" transform="rotate(-90 90 90)"/>
+              <circle cx="90" cy="90" r="66" fill="none" stroke="#4f46e5" stroke-width="26"
+                stroke-dasharray="95.4 414.7" stroke-dashoffset="-248.8" transform="rotate(-90 90 90)"/>
+              <circle cx="90" cy="90" r="66" fill="none" stroke="#f0a500" stroke-width="26"
+                stroke-dasharray="70.5 414.7" stroke-dashoffset="-344.2" transform="rotate(-90 90 90)"/>
+            </svg>
+            <div class="ctr"><b>30</b><span>open jobs</span></div>
+          </div>
+          <div class="leg2">
+            <div class="r"><div class="l"><i class="dot" style="background:#94a3b8"></i>In Queue</div><b>18</b></div>
+            <div class="r"><div class="l"><i class="dot" style="background:#4f46e5"></i>Being Digitized</div><b>7</b></div>
+            <div class="r"><div class="l"><i class="dot" style="background:#f0a500"></i>Awaiting Approval</div><b>5</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card tablecard">
+      <div class="hd">
+        <div><h3>Active Digitizing Jobs</h3><div class="sub">Pulled live from Cobra_Digitizing.xlsx · sorted by due time</div></div>
+        <div class="pill-tabs"><span class="on">All</span><span>Queue</span><span>Digitizing</span><span>Approval</span></div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Design</th><th>Customer</th><th>Locations</th><th class="mono">Stitches</th>
+            <th>3D Puff</th><th>Status</th><th class="mono">Turnaround</th><th class="mono">Digitize $</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="design"><div class="swatch" style="background:#e11d48">CB</div><div><div class="dn">Cobra Strike Logo</div><div class="dm">Left chest + back</div></div></div></td>
+            <td class="cust">Ridgeline MX</td><td>2</td><td class="mono">9,240</td>
+            <td class="puffY">Yes</td><td><span class="tag t-dig">Digitizing</span></td><td class="mono">3.1 h</td><td class="price mono">$7.50</td>
+          </tr>
+          <tr>
+            <td><div class="design"><div class="swatch" style="background:#4f46e5">SC</div><div><div class="dn">Summit Coffee Crest</div><div class="dm">Front center</div></div></div></td>
+            <td class="cust">Summit Coffee Co.</td><td>1</td><td class="mono">6,180</td>
+            <td class="puffN">No</td><td><span class="tag t-appr">Approval</span></td><td class="mono">1.4 h</td><td class="price mono">$5.00</td>
+          </tr>
+          <tr>
+            <td><div class="design"><div class="swatch" style="background:#0ea5a4">TT</div><div><div class="dn">Tide Turners Wave</div><div class="dm">Front + side</div></div></div></td>
+            <td class="cust">Tide Turners Swim</td><td>2</td><td class="mono">7,910</td>
+            <td class="puffN">No</td><td><span class="tag t-queue">In Queue</span></td><td class="mono">5.0 h</td><td class="price mono">$7.50</td>
+          </tr>
+          <tr>
+            <td><div class="design"><div class="swatch" style="background:#d97706">HR</div><div><div class="dn">Hollow Ridge Antler</div><div class="dm">Front · puff</div></div></div></td>
+            <td class="cust">Hollow Ridge Outfitters</td><td>1</td><td class="mono">11,430</td>
+            <td class="puffY">Yes</td><td><span class="tag t-dig">Digitizing</span></td><td class="mono">2.7 h</td><td class="price mono">$5.00</td>
+          </tr>
+          <tr>
+            <td><div class="design"><div class="swatch" style="background:#111827">AP</div><div><div class="dn">Apex Barbell Mark</div><div class="dm">Left chest</div></div></div></td>
+            <td class="cust">Apex Strength</td><td>1</td><td class="mono">4,720</td>
+            <td class="puffN">No</td><td><span class="tag t-done">Approved</span></td><td class="mono">0.9 h</td><td class="price mono">$5.00</td>
+          </tr>
+          <tr>
+            <td><div class="design"><div class="swatch" style="background:#16a34a">GV</div><div><div class="dn">Greenvale FC Badge</div><div class="dm">Front · 3 color</div></div></div></td>
+            <td class="cust">Greenvale Football</td><td>3</td><td class="mono">14,860</td>
+            <td class="puffN">No</td><td><span class="tag t-queue">In Queue</span></td><td class="mono">6.2 h</td><td class="price mono">$10.00</td>
+          </tr>
+          <tr>
+            <td><div class="design"><div class="swatch" style="background:#7c3aed">NL</div><div><div class="dn">Nightowl Lounge Script</div><div class="dm">Front center</div></div></div></td>
+            <td class="cust">Nightowl Lounge</td><td>1</td><td class="mono">5,540</td>
+            <td class="puffY">Yes</td><td><span class="tag t-appr">Approval</span></td><td class="mono">1.8 h</td><td class="price mono">$5.00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="foot-note">Interactive dashboard mockup · Cobra Digitize for Apparel Hotline · sample data — not final figures</div>
+  </main>
+</div>
+</body>
+</html>
