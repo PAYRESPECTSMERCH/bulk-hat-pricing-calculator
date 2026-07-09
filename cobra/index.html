@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>Cobra Digitize · Job Queue</title>
+<link rel="manifest" href="./manifest.json">
+<style>
+  :root{
+    --ink:#1d1d1f; --muted:#86868b; --line:#ececee; --bg:#f5f5f7; --panel:#fff;
+    --green:#1a9e4b; --greenbg:#e7f7ee; --amber:#b06a00; --amberbg:#fdf0dc;
+    --grey:#6e6e73; --greybg:#eeeef0; --blue:#0071e3; --puff:#7c4dff; --puffbg:#efeaff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1780px;margin:0 auto;padding:26px 24px 60px}
+
+  /* header */
+  .head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .title{display:flex;align-items:center;gap:13px;min-width:0}
+  .mark{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#111,#3a3a3c);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;flex-shrink:0}
+  h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1.1}
+  .sub{font-size:13px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .dot-live{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;box-shadow:0 0 0 3px rgba(26,158,75,.16)}
+  .dot-sample{width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;box-shadow:0 0 0 3px rgba(176,106,0,.16)}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .search{background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 13px;font-size:14px;
+    width:230px;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .search::placeholder{color:#b0b0b6}
+  .seg{background:#e9e9eb;border-radius:11px;padding:3px;display:flex;font-size:13px}
+  .seg button{border:none;background:none;padding:8px 15px;border-radius:9px;color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .iconbtn{background:#fff;border:1px solid var(--line);border-radius:11px;width:40px;height:40px;font-size:17px;cursor:pointer;color:#333}
+  .iconbtn:active{transform:scale(.94)}
+
+  /* card table */
+  .card{background:var(--panel);border-radius:18px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 12px 34px rgba(0,0,0,.06);overflow:hidden}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:1180px}
+  thead th{background:#fafafb;text-align:left;color:var(--muted);font-size:11px;font-weight:700;
+    letter-spacing:.6px;text-transform:uppercase;padding:14px 14px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0}
+  thead th.grp{border-left:1px solid var(--line)}
+  tbody td{padding:15px 14px;border-bottom:1px solid #f4f4f5;vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#fbfbfd}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:99px;white-space:nowrap}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .p-done{background:var(--greenbg);color:var(--green)}
+  .p-mock{background:var(--amberbg);color:var(--amber)}
+  .p-queue{background:var(--greybg);color:var(--grey)}
+  .order{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+  .puff{font-size:10.5px;font-weight:800;color:var(--puff);background:var(--puffbg);border-radius:7px;padding:3px 7px;letter-spacing:.4px;white-space:nowrap}
+  .details{max-width:330px;line-height:1.45;color:#2c2c2e}
+  .details .qty{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--amber);background:var(--amberbg);border-radius:6px;padding:2px 7px;vertical-align:middle;white-space:nowrap}
+  .details .note{color:var(--muted)}
+  .plc{border-left:1px solid var(--line)}
+  .chip .nm{font-weight:600;font-size:12.5px}
+  .chip .sz{color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap}
+  .none{color:#c7c7cc}
+  .thread{display:flex;align-items:center;gap:8px;max-width:180px}
+  .sw{display:flex;flex-shrink:0}
+  .sw i{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);margin-left:-4px}
+  .sw i:first-child{margin-left:0}
+  .tlabel{font-size:12.5px;color:#2c2c2e;line-height:1.25}
+  .folder{display:inline-flex;align-items:center;gap:7px;color:var(--blue);font-weight:600;font-size:12.5px;
+    font-variant-numeric:tabular-nums;text-decoration:none;cursor:pointer}
+
+  .empty{padding:60px 20px;text-align:center;color:var(--muted);font-size:15px}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:12px;color:var(--muted);padding:0 4px;flex-wrap:wrap;gap:8px}
+  a.plainlink{color:var(--blue);text-decoration:none;font-weight:600}
+
+  @media (max-width:640px){
+    .wrap{padding:16px 12px 50px}
+    .search{width:100%;order:3}
+    h1{font-size:20px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="title">
+      <div class="mark">C</div>
+      <div>
+        <h1>Cobra Digitize · Job Queue</h1>
+        <div class="sub" id="statusline"><span class="dot-sample"></span> Loading…</div>
+      </div>
+    </div>
+    <div class="controls">
+      <input class="search" id="search" placeholder="Search order, design, thread…" oninput="render()">
+      <div class="seg" id="seg">
+        <button data-f="all">All</button>
+        <button data-f="active" class="on">Active</button>
+        <button data-f="completed">Completed</button>
+      </div>
+      <button class="iconbtn" id="refresh" title="Refresh from sheet" onclick="load()">⟳</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th><th>Order</th><th>3D</th><th>Details</th>
+            <th class="grp">Front</th><th class="grp">Back</th><th class="grp">Left</th><th class="grp">Right</th>
+            <th>Thread</th><th>Digitize Folder</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="foot">
+    <span id="countline"></span>
+    <span>Cobra Digitize · mirrors the live Google Sheet</span>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — point this at your Google Sheet.
+   To go live: in the sheet → File → Share → Publish to web
+   (or Share → "Anyone with the link → Viewer"), then set
+   SHEET_ID below. Until then the app shows built-in sample rows.
+   ============================================================ */
+const CONFIG = {
+  SHEET_ID: "1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI",
+  GID: "0",              // the tab's gid (0 = first tab)
+  USE_LIVE: true          // set false to force sample data
+};
+
+/* ---------- thread color mapping ---------- */
+const COLORS = {
+  "yellow gold":"#e0a400","baby blue":"#7dd3fc","royal blue":"#1d4ed8","forest green":"#166534",
+  "black":"#111111","white":"#ffffff","navy":"#1e2a52","royal":"#1d4ed8","gold":"#e0a400",
+  "yellow":"#f2c200","pink":"#ec4899","purple":"#7c3aed","green":"#1a9e4b","red":"#d21f28",
+  "cream":"#f3ecd8","brown":"#7c4a1e","tan":"#d2b48c","orange":"#f97316","blue":"#2563eb",
+  "grey":"#9ca3af","gray":"#9ca3af","natural":"#efe7d6","maroon":"#7f1d1d","teal":"#0e8a89",
+  "silver":"#c0c0c8","charcoal":"#36454f"
+};
+const PHRASES = Object.keys(COLORS).filter(k=>k.includes(" "));
+function threadSwatches(text){
+  if(!text) return [];
+  let t = String(text).toLowerCase();
+  const found = [];
+  // multiword first, blanking matches so single words don't double-count
+  for(const p of PHRASES){ if(t.includes(p)){ found.push(COLORS[p]); t = t.split(p).join("  "); } }
+  for(const w of Object.keys(COLORS)){ if(w.includes(" ")) continue;
+    const re = new RegExp("\\b"+w+"\\b"); if(re.test(t)){ found.push(COLORS[w]); t = t.replace(re,"  "); } }
+  return found.slice(0,3);
+}
+function cleanThreadLabel(text){
+  if(!text) return "";
+  return String(text).replace(/^\s*thread\s*/i,"").replace(/\s+/g," ").trim()
+    .replace(/\bwith\b/gi,"w/").replace(/\boutline\b/gi,"outline");
+}
+
+/* ---------- placement parsing ---------- */
+function parsePlacement(cell){
+  if(!cell || !String(cell).trim()) return null;
+  let s = String(cell).trim();
+  let size = "";
+  const m = s.match(/([\d.]+)\s*["″'’]?\s*W\b/i);
+  if(m){ size = m[1].replace(/\.$/,"") + '" W'; s = s.replace(m[0],""); }
+  s = s.replace(/\((front|back|left|right)\)/ig,"").replace(/\s{2,}/g," ").replace(/[-–—·|]\s*$/,"").trim();
+  if(s.length>26) s = s.slice(0,25).trim()+"…";
+  return {name:s.toUpperCase(), size};
+}
+
+/* ---------- status ---------- */
+function statusMeta(raw){
+  const s = (raw||"").trim().toUpperCase();
+  if(s === "COMPLETED") return {cls:"p-done", label:"Completed", group:"completed"};
+  if(s === "SEND MOCKUP") return {cls:"p-mock", label:"Send Mockup", group:"active"};
+  if(s === "") return {cls:"p-queue", label:"Queued", group:"active"};
+  return {cls:"p-queue", label:raw, group:"active"};
+}
+
+/* ---------- details ---------- */
+function renderDetails(text){
+  if(!text) return '<span class="none">—</span>';
+  let s = String(text).trim();
+  let qty = "";
+  const q = s.match(/qty\s*[:\-]?\s*(\d+)/i);
+  if(q){ qty = ' <span class="qty">Qty '+q[1]+'</span>'; s = s.replace(q[0],""); }
+  // drop redundant "THREAD ..." tail that already lives in its own column
+  s = s.replace(/\bthread\b[\s\S]*$/i,"").trim();
+  s = s.replace(/^front:\s*/i,"").replace(/[\/,\-–—]\s*$/,"").replace(/\s{2,}/g," ").trim();
+  if(s.length>150) s = s.slice(0,148)+"…";
+  return (esc(s)||'<span class="none">—</span>') + qty;
+}
+
+function esc(x){ return String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ---------- CSV parsing ---------- */
+function parseCSV(text){
+  const rows=[]; let row=[], field="", i=0, inQ=false;
+  while(i<text.length){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQ=false; }
+      else field+=c;
+    } else {
+      if(c==='"') inQ=true;
+      else if(c===','){ row.push(field); field=""; }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
+      else if(c==='\r'){}
+      else field+=c;
+    }
+    i++;
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+/* ---------- data ---------- */
+let JOBS=[], IS_LIVE=false, CURRENT_FILTER="active";
+
+const SAMPLE = [
+  ["","4103289715","","Kinley (right) + Gracie (back)","","GRACIE","","KINLEY - 2\" W","THREAD YELLOW GOLD","RIGHT JUSTINE"],
+  ["","ANNA MARIA FAIRE","3D","ANNA MARIA","ANNA MARIA","","","","THREAD BLACK","ANNA MARIA FAIRE"],
+  ["","HYBZ528QNR","3D","SPRING LAKE (UPSIDE DOWN COLLEGE FONT)","SPRING LAKE","","","","THREAD NAVY","HYBZ528QNR"],
+  ["SEND MOCKUP","4079413156","","FRONT: BEVERLY HILLS / MARTINEZ / EST. 2026 BLACK/NATURAL — QTY 20 THREAD BLACK","BEVERLY HILLS","","","","THREAD BLACK","4079413156"],
+  ["","4095342519","","RDH / REGISTERED DENTAL HYGIENIST (SCRIPT)","RDH","","","","THREAD NAVY WITH WHITE OUTLINE","4095342519"],
+  ["","4109131630","","FORE THE HAWKS","FORE THE HAWKS","","","","THREAD NAVY AND GOLD","4109131630"],
+  ["","4105002677","","JOCEY LOGO","JOCEY LOGO","","","","THREAD PINK","4105002677"],
+  ["","4099540340","3D","IX LOGO GOLF","IX LOGO GOLF","","","","THREAD WHITE","4099540340"],
+  ["COMPLETED","4105392817","","FRONT: SALT AIR (5\" W) / PILATES STACKED THREAD BABY BLUE","SALT AIR PILATES (FRONT) - 5\" W","","","","THREAD BABY BLUE","4105392817"],
+  ["COMPLETED","4075942648","3D","3D WESO / VIII . XXVII / EVERY LIFETIME","WESO (FRONT) - 3.7\" W","VIII . XXVII (BACK) - 3.5\" W","EVERY LIFETIME (LEFT) - 2.5\" W","","THREAD WHITE / BLACK","4075942648"],
+  ["COMPLETED","4097408992","","INTERNATIONAL HARVESTER","INTERNATIONAL HARVESTER - 3\" W","BACK LOGO - 1.3\" W","","CHICAGO USA RIGHT - 3\" W","THREAD BLACK, WHITE, RED","4097408992"],
+  ["COMPLETED","4101534613","3D","3D GLADS / DOUGLASS","GLADS (FRONT) - 4.5\" W","","DOUGLASS (LEFT) - 2.5\" W","","THREAD BLACK / GOLD","4101534613"],
+  ["COMPLETED","4096903814","","OVERSERVED DOG LOGO / SIGNATURE","OVERSERVED DOG LOGO - 2.4\" W","","","SIGNATURE RIGHT - 1.6\" W","THREAD GREEN","4096903814"],
+  ["COMPLETED","4095326217","","FROM BARTELSO WITH LOVE / GERDES — QTY 100","FROM BARTELSO WITH LOVE (FRONT) - 5\" W","","GERDES (LEFT) - 2.2\" W","","THREAD BLACK","4095326217"]
+];
+
+// map a raw array row (sheet column order) to a job object
+function toJob(r){
+  return {
+    status:r[0]||"", order:r[1]||"", puff:r[2]||"", details:r[3]||"",
+    front:r[4]||"", back:r[5]||"", left:r[6]||"", right:r[7]||"",
+    thread:r[8]||"", folder:r[9]||""
+  };
+}
+
+async function load(){
+  const btn=document.getElementById("refresh"); btn.textContent="⟳"; btn.style.opacity=".5";
+  let rows=null;
+  if(CONFIG.USE_LIVE && CONFIG.SHEET_ID){
+    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CONFIG.GID}`;
+    try{
+      const res = await fetch(url,{cache:"no-store"});
+      if(res.ok){
+        const txt = await res.text();
+        const parsed = parseCSV(txt).filter(r=>r.some(c=>c&&c.trim()));
+        // drop header row(s): find the row that contains "STATUS" then take the rest
+        let start=0;
+        for(let i=0;i<Math.min(parsed.length,3);i++){
+          if(parsed[i].join("|").toUpperCase().includes("STATUS")){ start=i+1; break; }
+        }
+        rows = parsed.slice(start);
+        IS_LIVE = true;
+      }
+    }catch(e){ /* CORS / private sheet — fall back */ }
+  }
+  if(!rows){ rows = SAMPLE; IS_LIVE=false; }
+  JOBS = rows.map(toJob).filter(j=>j.order||j.details);
+  btn.style.opacity="1";
+  updateStatusline();
+  render();
+}
+
+function updateStatusline(){
+  const el=document.getElementById("statusline");
+  const total=JOBS.length;
+  const done=JOBS.filter(j=>statusMeta(j.status).group==="completed").length;
+  const active=total-done;
+  if(IS_LIVE){
+    el.innerHTML=`<span class="dot-live"></span> Live · synced from Google Sheet · ${total} jobs · ${active} active`;
+  }else{
+    el.innerHTML=`<span class="dot-sample"></span> Sample data — publish the sheet to go live (${total} demo rows)`;
+  }
+}
+
+function threadCell(thread){
+  const sw = threadSwatches(thread).map(c=>`<i style="background:${c}"></i>`).join("");
+  const label = cleanThreadLabel(thread);
+  if(!label) return '<span class="none">—</span>';
+  return `<div class="thread"><span class="sw">${sw||'<i style="background:#e5e5ea"></i>'}</span><span class="tlabel">${esc(label)}</span></div>`;
+}
+function placementCell(cell){
+  const p=parsePlacement(cell);
+  if(!p) return '<span class="none">—</span>';
+  return `<span class="chip"><span class="nm">${esc(p.name)}</span>${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span>`;
+}
+function folderCell(folder){
+  if(!folder||!folder.trim()) return '<span class="none">—</span>';
+  const q = encodeURIComponent(folder.trim());
+  const href = `https://drive.google.com/drive/search?q=${q}`;
+  return `<a class="folder" href="${href}" target="_blank" rel="noopener">🗂 ${esc(folder)}</a>`;
+}
+
+function render(){
+  const q=(document.getElementById("search").value||"").toLowerCase().trim();
+  const tbody=document.getElementById("rows");
+  const list = JOBS.filter(j=>{
+    const g=statusMeta(j.status).group;
+    if(CURRENT_FILTER==="active" && g!=="active") return false;
+    if(CURRENT_FILTER==="completed" && g!=="completed") return false;
+    if(q){
+      const hay=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if(!list.length){
+    tbody.innerHTML=`<tr><td colspan="10"><div class="empty">No jobs match this view.</div></td></tr>`;
+  }else{
+    tbody.innerHTML = list.map(j=>{
+      const sm=statusMeta(j.status);
+      const isNum=/^[#]?\d{6,}$/.test(String(j.order).trim());
+      return `<tr>
+        <td><span class="pill ${sm.cls}">${esc(sm.label)}</span></td>
+        <td class="order" style="${isNum?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td>
+        <td>${j.puff && j.puff.trim() ? '<span class="puff">3D</span>' : '<span class="none">—</span>'}</td>
+        <td class="details">${renderDetails(j.details)}</td>
+        <td class="plc">${placementCell(j.front)}</td>
+        <td class="plc">${placementCell(j.back)}</td>
+        <td class="plc">${placementCell(j.left)}</td>
+        <td class="plc">${placementCell(j.right)}</td>
+        <td>${threadCell(j.thread)}</td>
+        <td>${folderCell(j.folder)}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  const done=JOBS.filter(j=>statusMeta(j.status).group==="completed").length;
+  document.getElementById("countline").textContent =
+    `Showing ${list.length} of ${JOBS.length} jobs · ${JOBS.length-done} active · ${done} completed`;
+}
+
+/* filter tabs */
+document.getElementById("seg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  [...document.querySelectorAll("#seg button")].forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); CURRENT_FILTER=b.dataset.f; render();
+});
+
+load();
+</script>
+</body>
+</html>
