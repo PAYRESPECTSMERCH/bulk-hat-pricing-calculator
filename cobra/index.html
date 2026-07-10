@@ -75,7 +75,14 @@
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
   :focus-visible{outline:2.5px solid var(--focus);outline-offset:2px;border-radius:8px}
-  .wrap{max-width:100%;margin:0 auto;padding:18px 20px 72px}
+  .wrap{max-width:100%;margin:0 auto;padding:18px 20px 72px;transition:padding-right .26s cubic-bezier(.32,.72,0,1)}
+  @media (min-width:900px){
+    body.dm-open .wrap{padding-right:412px}   /* dock: make room for the sidebar so nothing is hidden */
+    body.dm-open .dmscrim{display:none}
+    body.dm-open thead th{top:0}
+  }
+  .folderext{display:block;margin-top:4px;font-size:11px;color:var(--muted);text-decoration:none;white-space:nowrap}
+  .folderext:hover{color:var(--accent);text-decoration:underline}
 
   /* app bar */
   .bar{display:flex;align-items:center;gap:13px;margin-bottom:18px}
@@ -498,7 +505,9 @@ function detailsCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='details')?editBo
 function threadCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='thread')?editBox(j.thread,false):threadCell(j.thread); }
 function editBox(v,multi){ v=esc(String(v==null?"":v)); return multi?`<textarea id="editinput" class="celledit">${v}</textarea><span class="edit-hint">Enter = new line · ⌘/Ctrl+Enter to save · Esc to cancel</span>`:`<input id="editinput" class="celledit" value="${v}"><span class="edit-hint">Enter to save · Esc to cancel</span>`; }
 function folderIdFromUrl(u){var m=String(u||"").match(/[-\w]{25,}/);return m?m[0]:"";}
-function folderCell(j){const f=j.folder;if(!f||!f.trim())return'<span class="none">—</span>';const fid=folderIdFromUrl(j.folderUrl);return`<a class="folder" href="javascript:void(0)" onclick="openBrowse('${jss(fid)}','${jss(f)}')">🗂 ${esc(f)}</a>`;}
+function folderCell(j){const f=j.folder;if(!f||!f.trim())return'<span class="none">—</span>';const fid=folderIdFromUrl(j.folderUrl);
+  const ext=j.folderUrl?`<a class="folderext" href="${esc(j.folderUrl)}" target="_blank" rel="noopener">Open in new window ↗</a>`:"";
+  return`<a class="folder" href="javascript:void(0)" onclick="openBrowse('${jss(fid)}','${jss(f)}')">🗂 ${esc(f)}</a>${ext}`;}
 function pill(j,i){const m=sMeta(j.status);const st=m.bg?`background:${m.bg};color:${m.fg};border-color:transparent`:`background:transparent;color:var(--muted);border-color:var(--line)`;return `<button class="pill act" style="${st}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
 function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
 function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
@@ -588,7 +597,7 @@ const MOCK_FILES=[
   {name:'LUCK OR SOMETHING - 5" W.png',mime:'image/png',size:221000,thumb:'',url:'#'}
 ];
 const MOCK_FOLDERS=[{id:'sub1',name:'PROOFS'},{id:'sub2',name:'FINAL STITCH FILES'},{id:'sub3',name:'ORIGINAL ART'}];
-function dmShow(){document.getElementById("dmscrim").classList.add("open");document.getElementById("dm").classList.add("open");}
+function dmShow(){document.getElementById("dmscrim").classList.add("open");document.getElementById("dm").classList.add("open");document.body.classList.add("dm-open");}
 function dmSetUpload(on){document.getElementById("dmUp").classList.toggle("on",!!on);}
 function openDM(i,key){
   DM.mode='attach'; const j=JOBS[i]; DM.target={i,key};
@@ -608,7 +617,7 @@ function openBrowse(folderId,name){
 function browseTo(folderId,name){ DM.folderId=folderId; DM.folderName=name||"Folder"; loadBrowse(); }
 function enterFolder(id,name){ DM.stack.push({id:DM.folderId,name:DM.folderName}); DM.folderId=id; DM.folderName=name; loadBrowse(); }
 function navBack(){ if(!DM.stack.length)return; const p=DM.stack.pop(); DM.folderId=p.id; DM.folderName=p.name; loadBrowse(); }
-function closeDM(){document.getElementById("dm").classList.remove("open");document.getElementById("dmscrim").classList.remove("open");document.getElementById("dm").classList.remove("browse");DM.target=null;}
+function closeDM(){document.getElementById("dm").classList.remove("open");document.getElementById("dmscrim").classList.remove("open");document.getElementById("dm").classList.remove("browse");document.body.classList.remove("dm-open");DM.target=null;}
 function dmFilter(){ DM.mode==='browse'?dmRenderBrowse():dmRender(); }
 function dmRefresh(){ DM.mode==='browse'?loadBrowse():dmReload(); }
 
