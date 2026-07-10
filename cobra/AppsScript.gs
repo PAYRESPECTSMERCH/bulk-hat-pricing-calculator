@@ -65,6 +65,16 @@ function linkKey_(header) {
 }
 function json_(o){ return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
+/* Optional access PIN. OFF by default — nothing changes until you set one.
+   To enable: Apps Script editor → Project Settings → Script Properties →
+   add property "PIN" with your code, then everyone must enter it once. */
+function pinOK_(e, p) {
+  var pin = PropertiesService.getScriptProperties().getProperty("PIN");
+  if (!pin) return true;
+  var got = (e && e.parameter && e.parameter.pin) || (p && p.pin) || "";
+  return String(got) === String(pin);
+}
+
 // Build a file object from a Drive v2 API resource (fast — no extra round-trips).
 function fileRes_(f){
   return { id:f.id, name:f.title, url:f.alternateLink||("https://drive.google.com/file/d/"+f.id+"/view"),
@@ -99,6 +109,7 @@ function countFiles_(folderId, cap){
 function authorize(){ Logger.log("OK: " + Drive.Files.get(FOLDER_ID).title); }
 
 function doGet(e) {
+  if (!pinOK_(e)) return json_({ok:false, error:"pin"});
   var action = (e && e.parameter && e.parameter.action) || "list";
   var sh = getSheet_(e), info = headerInfo_(sh);
 
@@ -175,6 +186,7 @@ function doGet(e) {
 
 function doPost(e) {
   var p={}; try{ p=JSON.parse(e.postData.contents); }catch(err){}
+  if (!pinOK_(e, p)) return json_({ok:false, error:"pin"});
   if (p.action === "upload") {
     var fid=p.folderId||FOLDER_ID;
     var blob=Utilities.newBlob(Utilities.base64Decode(p.data), p.mime||"application/octet-stream", p.name||"upload");
