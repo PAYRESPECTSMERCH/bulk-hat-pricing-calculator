@@ -132,9 +132,9 @@
   .search::placeholder{color:var(--muted);opacity:.8}
 
   /* filter tabs (quiet underline) */
-  .chips{display:flex;gap:18px;margin-bottom:16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
+  .chips{display:flex;gap:18px;margin-bottom:16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior-x:contain}
   .chips::-webkit-scrollbar{display:none}
-  .chip{flex:0 0 auto;background:none;border:none;touch-action:pan-x;padding:5px 1px 10px;font-size:13px;font-weight:600;
+  .chip{flex:0 0 auto;background:none;border:none;touch-action:none;padding:5px 1px 10px;font-size:13px;font-weight:600;
     color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap;
     font-family:inherit;display:inline-flex;align-items:center;gap:7px}
   .chip:hover{color:var(--ink)}
@@ -400,9 +400,9 @@
   .wbc .cap{font-size:10.5px;color:var(--muted);margin-top:6px}
   .today .tempty{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:34px;text-align:center;color:var(--muted);font-size:13.5px}
   /* workbook tabs */
-  .wbtabs{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
+  .wbtabs{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior-x:contain}
   .wbtabs::-webkit-scrollbar{display:none}
-  .wbtab{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:99px;height:36px;width:122px;padding:0 8px;font:inherit;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;white-space:nowrap;flex:0 0 auto;touch-action:pan-x;overflow:hidden;text-overflow:ellipsis}
+  .wbtab{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:99px;height:36px;width:122px;padding:0 8px;font:inherit;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;white-space:nowrap;flex:0 0 auto;touch-action:none;overflow:hidden;text-overflow:ellipsis}
   .wbtab .d{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
   .wbtab b{font-size:10.5px;font-weight:800;color:var(--act);font-variant-numeric:tabular-nums}
   .wbtab:hover{background:var(--hover)}
@@ -801,7 +801,9 @@ function buildChips(){const c=counts();
   const chips=[{key:"all",label:"All",n:c.all}];
   if(c.__na)chips.push({key:"needsart",label:"Needs Art",n:c.__na});
   chips.push(...present.map(s=>({key:s.key,label:statusLabel(s.key),n:c[s.key]})));
-  document.getElementById("chips").innerHTML=chips.map(ch=>`<button class="chip ${FILTER===ch.key?'on':''}" role="tab" aria-selected="${FILTER===ch.key}" data-key="${esc(ch.key)}">${esc(ch.label)}<span class="count">${ch.n}</span></button>`).join("");}
+  const el=document.getElementById("chips");const keep=el.scrollLeft;
+  el.innerHTML=chips.map(ch=>`<button class="chip ${FILTER===ch.key?'on':''}" role="tab" aria-selected="${FILTER===ch.key}" data-key="${esc(ch.key)}">${esc(ch.label)}<span class="count">${ch.n}</span></button>`).join("");
+  el.scrollLeft=keep;}
 function setFilter(k){FILTER=k;buildChips();render();}
 
 /* ===== render ===== */
@@ -911,6 +913,31 @@ document.addEventListener("click",e=>{if(!e.target.closest("#menu")&&!e.target.c
 window.addEventListener("scroll",closeMenu,true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeSheet();closeFolder();closeDM();}});
 document.getElementById("chips").addEventListener("click",e=>{const b=e.target.closest("[data-key]");if(b)setFilter(b.dataset.key);});
+
+/* Manual drag-to-scroll for the horizontal tab rows. iOS Safari refuses to
+   native-scroll these, so we drive scrollLeft from pointer events ourselves
+   (works for touch AND mouse-drag). A real drag suppresses the trailing click. */
+function dragScroll(el){ if(!el)return; let st=null;
+  el.addEventListener("pointerdown",e=>{ st={x:e.clientX,sl:el.scrollLeft,moved:false}; },{passive:true});
+  el.addEventListener("pointermove",e=>{ if(!st)return; const dx=e.clientX-st.x;
+    if(st.moved||Math.abs(dx)>8){ st.moved=true; el.scrollLeft=st.sl-dx; } },{passive:true});
+  el.addEventListener("pointerup",e=>{ if(!st)return;
+    if(st.moved){ el._dragT=Date.now(); }
+    else { // a tap: with touch-action:none some browsers skip the synthetic click — fire it ourselves
+      const t=e.target&&e.target.closest?e.target.closest("[data-key],button,a"):null;
+      if(t){ el._inSynth=true; try{ t.click(); }finally{ el._inSynth=false; el._synthT=Date.now(); } }
+    }
+    st=null; },{passive:true});
+  el.addEventListener("pointercancel",()=>{ if(st&&st.moved)el._dragT=Date.now(); st=null; },{passive:true});
+  el.addEventListener("click",e=>{
+    if(el._inSynth) return;                                                    // our own synthetic click
+    if(el._dragT&&Date.now()-el._dragT<400){ e.preventDefault(); e.stopPropagation(); el._dragT=0; return; }  // trailing click after a drag
+    if(el._synthT&&Date.now()-el._synthT<400){ e.preventDefault(); e.stopPropagation(); el._synthT=0; }        // native duplicate after our synthetic
+  },true);
+}
+dragScroll(document.getElementById("chips"));
+dragScroll(document.getElementById("wbTabs"));
+
 document.getElementById("menu").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
 document.getElementById("sheetBody").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
 
@@ -939,7 +966,7 @@ function initWorkbookUI(){
     const total=WORKBOOKS.reduce((n,w)=>n+ovUrgentCount(w.id),0);
     let h='<button class="wbtab'+(TODAY?' on':'')+'" onclick="setWorkbook(\'__home\')">⌂ Main'+(total?' <b>'+total+'</b>':'')+'</button>';
     h+=WORKBOOKS.map(w=>{const n=ovUrgentCount(w.id);return '<button class="wbtab'+((!TODAY&&w.id===WB.id)?' on':'')+'" onclick="setWorkbook(\''+w.id+'\')"><span class="d" style="background:'+w.color+'"></span>'+esc(w.short||w.name)+(n?' <b>'+n+'</b>':'')+'</button>';}).join("");
-    tabs.innerHTML=h; if(vl)vl.hidden=false;
+    const keepT=tabs.scrollLeft; tabs.innerHTML=h; tabs.scrollLeft=keepT; if(vl)vl.hidden=false;
   }
   const nm=document.getElementById("wbName"); if(nm)nm.textContent=TODAY?"Main Dashboard":WB.name;
   const mk=document.getElementById("wbMark"); if(mk){mk.textContent=TODAY?"⌂":(WB.name||"C").charAt(0).toUpperCase(); mk.style.background=TODAY?"":(WB.color||""); }
