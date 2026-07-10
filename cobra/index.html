@@ -192,6 +192,7 @@
   @media (max-width:820px){
     .wrap{padding:16px 12px 60px}
     .card{display:none} .cards{display:flex}
+    .jc .t .pill{white-space:normal;text-align:center;max-width:64%;line-height:1.25}
     .search{width:100%;order:5;margin-top:2px}
     .titlerow{gap:8px}
     h1{font-size:21px}
@@ -258,13 +259,23 @@ const CONFIG={
   GID:"0", USE_LIVE:true
 };
 
-/* ===== status model ===== */
+/* ===== status model — mirrors the sheet's STATUS dropdown (labels + colors) ===== */
 const STATUS=[
-  {key:"",label:"Queued",cls:"p-q",dot:"var(--qdot)",group:"active",rank:1},
-  {key:"SEND MOCKUP",label:"Send Mockup",cls:"p-m",dot:"var(--mdot)",group:"active",rank:0},
-  {key:"COMPLETED",label:"Completed",cls:"p-d",dot:"var(--ddot)",group:"completed",rank:3}
+  {key:"",label:"Unassigned",bg:null,fg:"var(--muted)",dot:"#b0b0b6",rank:5},
+  {key:"READY",label:"READY",bg:"#202124",fg:"#ffffff",dot:"#202124",rank:6},
+  {key:"SEND MOCKUP",label:"SEND MOCKUP",bg:"#8b3dd6",fg:"#ffffff",dot:"#8b3dd6",rank:7},
+  {key:"WAITING ON CUSTOMER APPROVAL",label:"WAITING ON CUSTOMER APPROVAL",bg:"#f9d2c4",fg:"#8a3d24",dot:"#e8825f",rank:8},
+  {key:"DESIGN QUESTIONS",label:"DESIGN QUESTIONS",bg:"#fce9a6",fg:"#7a6008",dot:"#e6b800",rank:3},
+  {key:"UPDATE ARTWORK",label:"UPDATE ARTWORK",bg:"#d93a34",fg:"#ffffff",dot:"#d93a34",rank:2},
+  {key:"CUSTOMER APPROVED",label:"CUSTOMER APPROVED",bg:"#c8e9c1",fg:"#2c6b2a",dot:"#46b649",rank:9},
+  {key:"CANNOT FIND ORDER DETAILS",label:"CANNOT FIND ORDER DETAILS",bg:"#9e1414",fg:"#ffffff",dot:"#9e1414",rank:0},
+  {key:"HELP FIND ORDER #",label:"HELP FIND ORDER #",bg:"#f0a24a",fg:"#5a3410",dot:"#ef9430",rank:1},
+  {key:"COMPLETED",label:"COMPLETED",bg:"#16a34a",fg:"#ffffff",dot:"#16a34a",rank:10},
+  {key:"REVIEW DETAILS",label:"REVIEW DETAILS",bg:"#1a6fe0",fg:"#ffffff",dot:"#1a6fe0",rank:4}
 ];
-function sMeta(raw){const s=(raw||"").trim().toUpperCase();return STATUS.find(o=>o.key===s)||{key:s,label:raw,cls:"p-q",dot:"var(--qdot)",group:"active",rank:1};}
+const SMAP={};STATUS.forEach(s=>SMAP[s.key]=s);
+function sMeta(raw){const s=(raw||"").trim().toUpperCase();return SMAP[s]||{key:s,label:raw||"Unassigned",bg:null,fg:"var(--muted)",dot:"#b0b0b6",rank:5};}
+function isDone(k){return k==="COMPLETED"||k==="CUSTOMER APPROVED";}
 
 /* ===== thread colors ===== */
 const COLORS={"yellow gold":"#e0a400","baby blue":"#7dd3fc","royal blue":"#1d4ed8","forest green":"#166534","navy":"#1e2a52","black":"#111111","white":"#ffffff","royal":"#1d4ed8","gold":"#e0a400","yellow":"#f2c200","pink":"#ec4899","purple":"#7c3aed","green":"#1a9e4b","red":"#d21f28","cream":"#f3ecd8","brown":"#7c4a1e","tan":"#d2b48c","orange":"#f97316","blue":"#2563eb","grey":"#9ca3af","gray":"#9ca3af","natural":"#efe7d6","maroon":"#7f1d1d","teal":"#0e8a89","silver":"#c0c0c8","charcoal":"#36454f"};
@@ -348,42 +359,44 @@ async function load(){
   JOBS=jobs.filter(j=>j.order||j.details);
   btn.classList.remove("spin");buildChips();updateSync();render();
 }
-function updateSync(){const el=document.getElementById("sync");const t=JOBS.length,dn=JOBS.filter(j=>sMeta(j.status).group==="completed").length;
+function updateSync(){const el=document.getElementById("sync");const t=JOBS.length,dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
   if(IS_LIVE&&CAN_WRITE)el.innerHTML='<span class="dot live"></span> Live · two-way sync · '+t+' jobs';
   else if(IS_LIVE)el.innerHTML='<span class="dot live"></span> Live (read-only) · '+t+' jobs';
   else el.innerHTML='<span class="dot samp"></span> Preview data — connect the sheet to go live · '+t+' jobs';}
 
 /* ===== filter chips with counts ===== */
-function counts(){const c={all:JOBS.length,"":0,"SEND MOCKUP":0,"COMPLETED":0};JOBS.forEach(j=>{const k=sMeta(j.status).key;if(k in c)c[k]++;});return c;}
-function buildChips(){const c=counts();const defs=[["all","All","var(--muted)"],["","Queued","var(--qdot)"],["SEND MOCKUP","Send Mockup","var(--mdot)"],["COMPLETED","Completed","var(--ddot)"]];
-  document.getElementById("chips").innerHTML=defs.map(([k,lab,dot])=>{const n=k==="all"?c.all:c[k];return `<button class="chip-f ${FILTER===k?'on':''}" role="tab" aria-selected="${FILTER===k}" onclick="setFilter('${k.replace(/'/g,"\\'")}')"><span class="cdot" style="background:${dot}"></span>${lab}<span class="cnt">${n}</span></button>`;}).join("");}
+function counts(){const c={all:JOBS.length};JOBS.forEach(j=>{const k=sMeta(j.status).key;c[k]=(c[k]||0)+1;});return c;}
+function buildChips(){const c=counts();
+  const present=STATUS.filter(s=>c[s.key]).sort((a,b)=>a.rank-b.rank);
+  const chips=[{key:"all",label:"All",dot:"var(--muted)",n:c.all}].concat(present.map(s=>({key:s.key,label:s.label,dot:s.dot,n:c[s.key]})));
+  document.getElementById("chips").innerHTML=chips.map(ch=>`<button class="chip-f ${FILTER===ch.key?'on':''}" role="tab" aria-selected="${FILTER===ch.key}" data-key="${esc(ch.key)}"><span class="cdot" style="background:${ch.dot}"></span>${esc(ch.label)}<span class="cnt">${ch.n}</span></button>`).join("");}
 function setFilter(k){FILTER=k;buildChips();render();}
 
 /* ===== render ===== */
 function threadCell(t){const sw=swatches(t).map(c=>`<i style="background:${c}"></i>`).join("");const l=threadLabel(t);if(!l)return'<span class="none">—</span>';return`<div class="thread"><span class="sw">${sw||'<i style="background:var(--line)"></i>'}</span><span class="tlabel">${esc(l)}</span></div>`;}
 function plcCell(c){const p=parsePlc(c);if(!p)return'<span class="none">—</span>';return`<span class="chip"><span class="nm">${esc(p.name)}</span>${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span>`;}
 function folderCell(f){if(!f||!f.trim())return'<span class="none">—</span>';return`<a class="folder" href="https://drive.google.com/drive/search?q=${encodeURIComponent(f.trim())}" target="_blank" rel="noopener">🗂 ${esc(f)}</a>`;}
-function pill(j,i){const m=sMeta(j.status);return `<button class="pill act ${m.cls}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
+function pill(j,i){const m=sMeta(j.status);const st=m.bg?`background:${m.bg};color:${m.fg};border-color:transparent`:`background:transparent;color:var(--muted);border-color:var(--line)`;return `<button class="pill act" style="${st}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
 function sortJobs(l){return l.map((j,i)=>({j,i})).sort((a,b)=>(sMeta(a.j.status).rank-sMeta(b.j.status).rank)||(a.i-b.i)).map(x=>x.j);}
 function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
 function render(){const list=listNow();const tb=document.getElementById("rows"),cd=document.getElementById("cards");
   if(!list.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else{
     tb.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);const m=sMeta(j.status);const num=/^[#]?\d{6,}$/.test(String(j.order).trim());
-      return `<tr class="${m.group}"><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc">${plcCell(j.front)}</td><td class="plc">${plcCell(j.back)}</td><td class="plc">${plcCell(j.left)}</td><td class="plc">${plcCell(j.right)}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
+      return `<tr class="${isDone(m.key)?'completed':'active'}"><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc">${plcCell(j.front)}</td><td class="plc">${plcCell(j.back)}</td><td class="plc">${plcCell(j.left)}</td><td class="plc">${plcCell(j.right)}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
     cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
       const pl=[["FRONT","",j.front],["BACK","b",j.back],["LEFT","l",j.left],["RIGHT","r",j.right]].map(([lab,c,v])=>{const p=parsePlc(v);if(!p)return"";return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${esc(p.name)}</span><span class="ps">${p.size?esc(p.size):"—"}</span></div>`;}).join("");
       return `<div class="jc"><div class="t"><div class="co"><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
   }
-  const dn=JOBS.filter(j=>sMeta(j.status).group==="completed").length;
-  document.getElementById("count").textContent=`Showing ${list.length} of ${JOBS.length} · ${JOBS.length-dn} active · ${dn} completed`;
+  const dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
+  document.getElementById("count").textContent=`Showing ${list.length} of ${JOBS.length} · ${JOBS.length-dn} active · ${dn} done`;
 }
 
 /* ===== status change (popover desktop / sheet mobile) ===== */
 let pickIdx=null;
 const isMobile=()=>window.matchMedia("(max-width:820px)").matches;
 function openPicker(e,i){e.stopPropagation();pickIdx=i;isMobile()?openSheet():openMenu(e);}
-function optList(cur,cb){return STATUS.map(o=>`<div class="${cb}${o.key===cur?' cur':''}" role="menuitem" tabindex="0" onclick="pick('${o.key}')"><span class="sd" style="background:${o.dot}"></span>${o.label}</div>`).join("");}
+function optList(cur,cb){return STATUS.filter(s=>s.key!=="").map(o=>`<div class="${cb}${o.key===cur?' cur':''}" role="menuitem" tabindex="0" data-key="${esc(o.key)}"><span class="sd" style="background:${o.dot}"></span>${esc(o.label)}</div>`).join("");}
 function openMenu(e){const cur=sMeta(JOBS[pickIdx].status).key;const m=document.getElementById("menu");m.innerHTML=optList(cur,"mi");const r=e.currentTarget.getBoundingClientRect();m.style.top=(r.bottom+6)+"px";m.style.left=Math.min(r.left,window.innerWidth-192)+"px";m.classList.add("open");}
 function closeMenu(){document.getElementById("menu").classList.remove("open");}
 function openSheet(){const j=JOBS[pickIdx];document.getElementById("sheetHead").textContent=(j.order||jobTitle(j))+" · change status";document.getElementById("sheetBody").innerHTML=optList(sMeta(j.status).key,"si");document.getElementById("scrim").classList.add("open");document.getElementById("sheet").classList.add("open");}
@@ -391,6 +404,9 @@ function closeSheet(){document.getElementById("scrim").classList.remove("open");
 document.addEventListener("click",e=>{if(!e.target.closest("#menu")&&!e.target.closest(".pill.act"))closeMenu();});
 window.addEventListener("scroll",closeMenu,true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeSheet();}});
+document.getElementById("chips").addEventListener("click",e=>{const b=e.target.closest("[data-key]");if(b)setFilter(b.dataset.key);});
+document.getElementById("menu").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
+document.getElementById("sheetBody").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
 
 async function pick(key){if(pickIdx==null)return;const j=JOBS[pickIdx];const prev=j.status;closeMenu();closeSheet();
   if(sMeta(prev).key===key)return;

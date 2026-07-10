@@ -57,7 +57,7 @@ The app expects the sheet's existing columns, in this order:
 
 | Col | Meaning |
 |----|----|
-| STATUS | blank = Queued · `SEND MOCKUP` · `COMPLETED` |
+| STATUS | mirrors the sheet's dropdown: blank = Unassigned, plus `READY`, `SEND MOCKUP`, `WAITING ON CUSTOMER APPROVAL`, `DESIGN QUESTIONS`, `UPDATE ARTWORK`, `CUSTOMER APPROVED`, `CANNOT FIND ORDER DETAILS`, `HELP FIND ORDER #`, `COMPLETED`, `REVIEW DETAILS` — each with the same color as in the sheet |
 | ORDER | order number or name |
 | 3D | any value = 3D-puff badge |
 | DETAILS | free-text job description (Qty is auto-extracted) |
