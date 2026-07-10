@@ -204,6 +204,18 @@
   .fcard .fm{font-size:11.5px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
   .fcard .dots{color:var(--muted);font-size:18px;align-self:flex-start;padding:0 2px}
   .dm-empty{color:var(--muted);text-align:center;padding:44px 14px;font-size:13.5px;line-height:1.5}
+  .dm-target .back{cursor:pointer;color:var(--accent);font-weight:700}
+  .dm-up{display:none;margin:8px 14px 2px;border:1.5px dashed var(--line);border-radius:12px;padding:14px;text-align:center;color:var(--muted);font-size:12.5px;cursor:pointer}
+  .dm-up.on{display:block}
+  .dm-up b{color:var(--accent)}
+  .dm-up.drag{border-color:var(--accent);background:var(--accent-weak);color:var(--accent)}
+  .folderrow{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px;cursor:pointer;transition:border-color .15s,background .15s}
+  .folderrow:hover{border-color:var(--accent);background:var(--accent-weak)}
+  .folderrow .thumb{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--panel-2);border-radius:8px}
+  .folderrow .fi2{font-weight:650;font-size:13.5px;flex:1;min-width:0}
+  .folderrow .dots{color:var(--muted);font-size:18px}
+  .fcard .dl{color:var(--muted);font-size:17px;text-decoration:none;padding:0 4px}
+  .fcard .dl:hover{color:var(--accent)}
   .order{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .puff{font-size:10px;font-weight:800;color:#fff;background:#d93a34;border-radius:6px;padding:3px 6px;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 2px rgba(217,58,52,.35)}
   .details{max-width:320px;line-height:1.45;color:var(--ink)}
@@ -416,6 +428,7 @@ function detailsHTML(text){if(!text)return'<span class="none">—</span>';let s=
   return (esc(s)||'<span class="none">—</span>')+extra;}
 function jobTitle(j){let s=String(j.details||j.front||j.order||"").trim();s=s.replace(/qty\s*[:\-]?\s*\d+/i,"").replace(/\bthread\b[\s\S]*$/i,"").replace(/^front:\s*/i,"").replace(/\(.*?\)/g,"").replace(/[-–—][\s\S]*$/,"").replace(/[\/,]\s*$/,"").replace(/\s{2,}/g," ").trim();if(s.length>40)s=s.slice(0,38).trim()+"…";return s||"—";}
 function esc(x){return String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function jss(s){return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
 
 /* ===== CSV ===== */
 function parseCSV(text){const rows=[];let row=[],f="",i=0,q=false;while(i<text.length){const c=text[i];if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}else{if(c==='"')q=true;else if(c===','){row.push(f);f="";}else if(c==='\n'){row.push(f);rows.push(row);row=[];f="";}else if(c==='\r'){}else f+=c;}i++;}if(f.length||row.length){row.push(f);rows.push(row);}return rows;}
@@ -484,7 +497,8 @@ function orderCell(j,i){ if(EDIT&&EDIT.i===i&&EDIT.f==='order') return editBox(j
 function detailsCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='details')?editBox(j.details,true):detailsHTML(j.details); }
 function threadCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='thread')?editBox(j.thread,false):threadCell(j.thread); }
 function editBox(v,multi){ v=esc(String(v==null?"":v)); return multi?`<textarea id="editinput" class="celledit">${v}</textarea><span class="edit-hint">Enter = new line · ⌘/Ctrl+Enter to save · Esc to cancel</span>`:`<input id="editinput" class="celledit" value="${v}"><span class="edit-hint">Enter to save · Esc to cancel</span>`; }
-function folderCell(f){if(!f||!f.trim())return'<span class="none">—</span>';return`<a class="folder" href="javascript:void(0)" onclick="openFolder(null,'Digitize folder · '+${JSON.stringify(esc(f))})">🗂 ${esc(f)}</a>`;}
+function folderIdFromUrl(u){var m=String(u||"").match(/[-\w]{25,}/);return m?m[0]:"";}
+function folderCell(j){const f=j.folder;if(!f||!f.trim())return'<span class="none">—</span>';const fid=folderIdFromUrl(j.folderUrl);return`<a class="folder" href="javascript:void(0)" onclick="openBrowse('${jss(fid)}','${jss(f)}')">🗂 ${esc(f)}</a>`;}
 function pill(j,i){const m=sMeta(j.status);const st=m.bg?`background:${m.bg};color:${m.fg};border-color:transparent`:`background:transparent;color:var(--muted);border-color:var(--line)`;return `<button class="pill act" style="${st}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
 function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
 function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
@@ -492,7 +506,7 @@ function render(){const list=listNow();const tb=document.getElementById("rows"),
   if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else{
     tb.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);const m=sMeta(j.status);const num=/^[#]?\d{6,}$/.test(String(j.order).trim());
-      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td>${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
+      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td>${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td>${folderCell(j)}</td></tr>`;}).join("");
     cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
       const pl=[["FRONT","front",""],["BACK","back","b"],["LEFT","left","l"],["RIGHT","right","r"]].map(([lab,key,c])=>{const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${JOBS.indexOf(j)},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
       return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
@@ -561,8 +575,9 @@ function applyRowH(v){const t=document.querySelector(".card table");if(t)t.setAt
 function cycleRowH(){const t=document.querySelector(".card table");const cur=t.getAttribute("data-rh")||"normal";const nx=RH[(RH.indexOf(cur)+1)%RH.length];applyRowH(nx);try{localStorage.setItem("cobra-rh",nx);}catch(e){}toast("Row height: "+nx);}
 
 /* ===== Drive Manager sidebar (attach a file to Front/Back/Left/Right) ===== */
-let DM={files:[],view:[],target:null};
+let DM={files:[],folders:[],view:[],target:null,mode:'attach',folderId:null,folderName:'',stack:[],parent:''};
 function humanSize(n){n=+n||0;if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(0)+" KB";return (n/1048576).toFixed(1)+" MB";}
+function apiURL(qs){return CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+qs;}
 const MOCK_FILES=[
   {name:'KINLEY (RIGHT) - 2.2" W.png',mime:'image/png',size:184000,thumb:'',url:'#'},
   {name:'GRACIE (LEFT) - 1.9" W.png',mime:'image/png',size:172000,thumb:'',url:'#'},
@@ -572,47 +587,96 @@ const MOCK_FILES=[
   {name:"IF THE LIGHT IS OFF (RIGHT) - 5\" W.png",mime:'image/png',size:198000,thumb:'',url:'#'},
   {name:'LUCK OR SOMETHING - 5" W.png',mime:'image/png',size:221000,thumb:'',url:'#'}
 ];
+const MOCK_FOLDERS=[{id:'sub1',name:'PROOFS'},{id:'sub2',name:'FINAL STITCH FILES'},{id:'sub3',name:'ORIGINAL ART'}];
+function dmShow(){document.getElementById("dmscrim").classList.add("open");document.getElementById("dm").classList.add("open");}
+function dmSetUpload(on){document.getElementById("dmUp").classList.toggle("on",!!on);}
 function openDM(i,key){
-  const j=JOBS[i]; DM.target={i,key};
+  DM.mode='attach'; const j=JOBS[i]; DM.target={i,key};
+  document.getElementById("dm").classList.remove("browse");
+  document.getElementById("dmTitle").textContent="Drive Manager";
   const tg=document.getElementById("dmTarget");
-  tg.textContent="Attaching to "+key.toUpperCase()+"  ·  "+(j.order||jobTitle(j));
-  tg.classList.add("on");
-  document.getElementById("dmSearch").value="";
-  document.getElementById("dmscrim").classList.add("open");
-  document.getElementById("dm").classList.add("open");
-  dmReload();
+  tg.textContent="Attaching to "+key.toUpperCase()+"  ·  "+(j.order||jobTitle(j)); tg.classList.add("on");
+  document.getElementById("dmSearch").value=""; dmSetUpload(false);
+  dmShow(); dmReload();
 }
-function closeDM(){document.getElementById("dm").classList.remove("open");document.getElementById("dmscrim").classList.remove("open");DM.target=null;}
+function openBrowse(folderId,name){
+  DM.mode='browse'; DM.target=null; DM.stack=[];
+  document.getElementById("dm").classList.add("browse");
+  document.getElementById("dmSearch").value=""; dmSetUpload(true);
+  dmShow(); browseTo(folderId,name||"Folder");
+}
+function browseTo(folderId,name){ DM.folderId=folderId; DM.folderName=name||"Folder"; loadBrowse(); }
+function enterFolder(id,name){ DM.stack.push({id:DM.folderId,name:DM.folderName}); DM.folderId=id; DM.folderName=name; loadBrowse(); }
+function navBack(){ if(!DM.stack.length)return; const p=DM.stack.pop(); DM.folderId=p.id; DM.folderName=p.name; loadBrowse(); }
+function closeDM(){document.getElementById("dm").classList.remove("open");document.getElementById("dmscrim").classList.remove("open");document.getElementById("dm").classList.remove("browse");DM.target=null;}
+function dmFilter(){ DM.mode==='browse'?dmRenderBrowse():dmRender(); }
+function dmRefresh(){ DM.mode==='browse'?loadBrowse():dmReload(); }
+
 async function dmReload(){
   const list=document.getElementById("dmList"); list.innerHTML='<div class="dm-empty">Loading files…</div>';
+  document.getElementById("dmTitle").textContent="Drive Manager";
   if(CAN_WRITE && CONFIG.APPS_SCRIPT_URL){
     try{
-      const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=listFiles";
-      const r=await fetch(u,{cache:"no-store"}); const d=await r.json();
+      const r=await fetch(apiURL("action=listFiles"),{cache:"no-store"}); const d=await r.json();
       if(d && d.files){ DM.files=d.files; }
-      else { list.innerHTML='<div class="dm-empty">Update your Apps Script to enable the file picker (re-deploy the new code), then Refresh.</div>'; DM.files=[]; document.getElementById("dmCount").textContent="0"; return; }
+      else { list.innerHTML='<div class="dm-empty">Update your Apps Script to enable the file picker, then Refresh.</div>'; DM.files=[]; document.getElementById("dmCount").textContent="0"; return; }
     }catch(e){ DM.files=[]; }
-  } else {
-    DM.files=MOCK_FILES; // preview/demo
-  }
+  } else { DM.files=MOCK_FILES; }
   dmRender();
+}
+async function loadBrowse(){
+  const list=document.getElementById("dmList"); list.innerHTML='<div class="dm-empty">Loading folder…</div>';
+  document.getElementById("dmTitle").textContent=DM.folderName||"Folder";
+  if(CAN_WRITE && CONFIG.APPS_SCRIPT_URL && DM.folderId){
+    try{
+      const r=await fetch(apiURL("action=browse&folderId="+encodeURIComponent(DM.folderId)),{cache:"no-store"}); const d=await r.json();
+      if(d && (d.files||d.folders)){ DM.files=d.files||[]; DM.folders=d.folders||[]; DM.parent=(d.folder&&d.folder.parent)||""; if(d.folder&&d.folder.name){DM.folderName=d.folder.name;document.getElementById("dmTitle").textContent=DM.folderName;} }
+      else { list.innerHTML='<div class="dm-empty">Couldn\'t open this folder.</div>'; DM.files=[];DM.folders=[]; return; }
+    }catch(e){ list.innerHTML='<div class="dm-empty">Couldn\'t open this folder.</div>'; DM.files=[];DM.folders=[]; return; }
+  } else if(!DM.folderId && CAN_WRITE){
+    list.innerHTML='<div class="dm-empty">This order has no linked Drive folder yet. Link the folder in the sheet and it\'ll open here.</div>'; DM.files=[];DM.folders=[]; document.getElementById("dmCount").textContent="0"; return;
+  } else { DM.files=MOCK_FILES.slice(0,4); DM.folders=MOCK_FOLDERS; }  // preview/demo
+  dmRenderBrowse();
+}
+function fileCardHTML(f,i,attach){
+  const ext=(f.mime||"").split("/").pop().toUpperCase()||"FILE";
+  const sz=f.sizeh||(f.size?humanSize(f.size):"");
+  const th=f.thumb?`background-image:url('${esc(f.thumb)}')`:"";
+  const dl=f.id?`https://drive.google.com/uc?export=download&id=${esc(f.id)}`:(f.url||"#");
+  const act=attach?`onclick="attachFile(${i})"`:`onclick="window.open('${esc(f.url||dl)}','_blank','noopener')"`;
+  const right=attach?`<div class="dots">⋯</div>`:`<a class="dl" href="${dl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Download">⬇</a>`;
+  return `<div class="fcard" ${act}><div class="thumb" style="${th}">${f.thumb?"":"🖼"}</div><div class="fi"><div class="fn">${esc(f.name)}</div><div class="fm">${esc(ext)}${sz?" · "+esc(sz):""}</div></div>${right}</div>`;
 }
 function dmRender(){
   const q=(document.getElementById("dmSearch").value||"").toLowerCase().trim();
-  const files=DM.files.filter(f=>!q||(f.name||"").toLowerCase().includes(q));
-  DM.view=files;
+  const files=DM.files.filter(f=>!q||(f.name||"").toLowerCase().includes(q)); DM.view=files;
   document.getElementById("dmCount").textContent=DM.files.length;
   const list=document.getElementById("dmList");
-  if(!files.length){list.innerHTML='<div class="dm-empty">No files found.</div>';return;}
-  list.innerHTML=files.map((f,i)=>{
-    const ext=(f.mime||"").split("/").pop().toUpperCase()||"FILE";
-    const sz=f.sizeh||(f.size?humanSize(f.size):"");
-    const th=f.thumb?`background-image:url('${esc(f.thumb)}')`:"";
-    return `<div class="fcard" onclick="attachFile(${i})">
-      <div class="thumb" style="${th}">${f.thumb?"":"🖼"}</div>
-      <div class="fi"><div class="fn">${esc(f.name)}</div><div class="fm">${esc(ext)}${sz?" · "+esc(sz):""}</div></div>
-      <div class="dots">⋯</div></div>`;
-  }).join("");
+  list.innerHTML=files.length?files.map((f,i)=>fileCardHTML(f,i,true)).join(""):'<div class="dm-empty">No files found.</div>';
+}
+function dmRenderBrowse(){
+  const q=(document.getElementById("dmSearch").value||"").toLowerCase().trim();
+  const folders=DM.folders.filter(f=>!q||(f.name||"").toLowerCase().includes(q));
+  const files=DM.files.filter(f=>!q||(f.name||"").toLowerCase().includes(q)); DM.view=files;
+  document.getElementById("dmCount").textContent=(DM.folders.length+DM.files.length);
+  const tg=document.getElementById("dmTarget"); tg.classList.add("on");
+  tg.innerHTML=(DM.stack.length?`<span class="back" onclick="navBack()">‹ Back</span> · `:"")+"📁 "+esc(DM.folderName||"Folder");
+  const list=document.getElementById("dmList");
+  let html=folders.map(fo=>`<div class="folderrow" onclick="enterFolder('${jss(fo.id)}','${jss(fo.name)}')"><span class="thumb">📁</span><span class="fi2">${esc(fo.name)}</span><span class="dots">›</span></div>`).join("");
+  html+=files.map((f,i)=>fileCardHTML(f,i,false)).join("");
+  list.innerHTML=html||'<div class="dm-empty">This folder is empty.</div>';
+}
+async function doUpload(fileList){
+  fileList=[...(fileList||[])]; if(!fileList.length)return;
+  if(!(CAN_WRITE&&CONFIG.APPS_SCRIPT_URL&&DM.folderId)){ toast("Open a linked folder (live) to upload here",true); return; }
+  toast("Uploading "+fileList.length+" file(s)…");
+  for(const file of fileList){
+    try{
+      const data=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(String(rd.result).split(",").pop());rd.onerror=rej;rd.readAsDataURL(file);});
+      await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"upload",folderId:DM.folderId,name:file.name,mime:file.type||"application/octet-stream",data:data})});
+    }catch(e){ toast("Upload failed: "+file.name,true); }
+  }
+  toast("Uploaded ✓"); loadBrowse();
 }
 async function attachFile(vi){
   const f=DM.view[vi]; if(!f||!DM.target)return;
@@ -756,14 +820,25 @@ setInterval(function(){
 
 <div class="dmscrim" id="dmscrim" onclick="closeDM()"></div>
 <aside class="dm" id="dm" aria-label="Drive Manager" role="dialog" aria-modal="true">
-  <div class="dm-h"><span class="t">Drive Manager</span><button onclick="closeDM()" aria-label="Close">✕</button></div>
+  <div class="dm-h"><span class="t" id="dmTitle">Drive Manager</span><button onclick="closeDM()" aria-label="Close">✕</button></div>
   <div class="dm-sub">
-    <input class="dm-search" id="dmSearch" placeholder="Search files…" oninput="dmRender()" aria-label="Search files">
-    <span class="dm-filter" onclick="dmReload()">⌕ Filter</span>
+    <input class="dm-search" id="dmSearch" placeholder="Search…" oninput="dmFilter()" aria-label="Search">
+    <span class="dm-filter" onclick="dmRefresh()">↻ Refresh</span>
   </div>
   <div class="dm-target" id="dmTarget"></div>
-  <div class="dm-meta"><span class="rf">Recent Files <b id="dmCount">0</b></span><button class="dm-refresh" onclick="dmReload()">↻ Refresh</button></div>
+  <div class="dm-up" id="dmUp" onclick="document.getElementById('dmFile').click()">
+    <b>⬆ Upload</b> — drop files here or click to choose
+    <input type="file" id="dmFile" multiple hidden onchange="doUpload(this.files); this.value='';">
+  </div>
+  <div class="dm-meta"><span class="rf">Items <b id="dmCount">0</b></span><button class="dm-refresh" onclick="dmRefresh()">↻ Refresh</button></div>
   <div class="dm-list" id="dmList"></div>
 </aside>
+<script>
+(function(){var up=document.getElementById('dmUp');if(!up)return;
+  ['dragenter','dragover'].forEach(function(ev){up.addEventListener(ev,function(e){e.preventDefault();up.classList.add('drag');});});
+  ['dragleave','dragend'].forEach(function(ev){up.addEventListener(ev,function(e){e.preventDefault();up.classList.remove('drag');});});
+  up.addEventListener('drop',function(e){e.preventDefault();up.classList.remove('drag');if(e.dataTransfer&&e.dataTransfer.files)doUpload(e.dataTransfer.files);});
+})();
+</script>
 </body>
 </html>
