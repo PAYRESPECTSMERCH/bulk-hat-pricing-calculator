@@ -75,7 +75,7 @@
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
   :focus-visible{outline:2.5px solid var(--focus);outline-offset:2px;border-radius:8px}
-  .wrap{max-width:1780px;margin:0 auto;padding:20px 24px 72px}
+  .wrap{max-width:100%;margin:0 auto;padding:18px 20px 72px}
 
   /* app bar */
   .bar{display:flex;align-items:center;gap:13px;margin-bottom:18px}
@@ -134,6 +134,31 @@
   .pill.act::after{content:"⌄";margin-left:1px;font-size:12px;opacity:.6}
   .p-q{background:var(--qbg);color:var(--q)} .p-m{background:var(--mbg);color:var(--m)} .p-d{background:var(--dbg);color:var(--d)}
   tbody td .pill{white-space:normal;text-align:left;max-width:100%}
+  /* per-column alignment: Order + Front/Back/Left/Right centered; rest left */
+  thead th:nth-child(3),tbody td:nth-child(3),
+  thead th:nth-child(6),tbody td:nth-child(6),
+  thead th:nth-child(7),tbody td:nth-child(7),
+  thead th:nth-child(8),tbody td:nth-child(8),
+  thead th:nth-child(9),tbody td:nth-child(9){text-align:center}
+  /* placement + folder cells look/behave like links */
+  .plc .chip{color:var(--accent)}
+  .plc:hover .chip .nm{text-decoration:underline}
+  .plc .chip .nm{cursor:pointer}
+  /* row-height modes (Expand rows) */
+  .card table[data-rh="compact"] tbody td{padding:7px 14px}
+  .card table[data-rh="expanded"] tbody td{padding:24px 14px}
+  /* folder viewer modal */
+  .fscrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:95;opacity:0;pointer-events:none;transition:opacity .2s}
+  .fscrim.open{opacity:1;pointer-events:auto}
+  .fmodal{position:fixed;z-index:96;left:50%;top:50%;transform:translate(-50%,-47%) scale(.98);opacity:0;pointer-events:none;
+    width:min(940px,94vw);height:min(680px,86vh);background:var(--panel);border-radius:16px;box-shadow:var(--sh-pop);
+    display:flex;flex-direction:column;overflow:hidden;transition:opacity .2s,transform .2s}
+  .fmodal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .fm-head{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px}
+  .fm-head .fm-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .fm-open{font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:600;white-space:nowrap}
+  .fm-head button{background:var(--panel-2);border:none;border-radius:9px;width:32px;height:32px;font-size:15px;cursor:pointer;color:var(--ink)}
+  .fm-frame{flex:1;border:0;width:100%;background:var(--panel-2)}
   .order{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .puff{font-size:10px;font-weight:800;color:#fff;background:#d93a34;border-radius:6px;padding:3px 6px;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 2px rgba(217,58,52,.35)}
   .details{max-width:320px;line-height:1.45;color:var(--ink)}
@@ -242,6 +267,7 @@
     <div class="mark">C</div>
     <div class="brand"><div class="n">Cobra Digitize</div><div class="s">Apparel Hotline</div></div>
     <div class="barspace"></div>
+    <button class="iconbtn" id="rowh" title="Row height (compact / normal / tall)" aria-label="Change row height" onclick="cycleRowH()"><span>⇕</span></button>
     <button class="iconbtn" id="theme" title="Toggle theme" aria-label="Toggle light or dark theme" onclick="toggleTheme()"><span id="themeIcon">◐</span></button>
     <button class="iconbtn" id="refresh" title="Refresh from sheet" aria-label="Refresh from sheet" onclick="load()"><span>⟳</span></button>
   </div>
@@ -403,7 +429,7 @@ function setFilter(k){FILTER=k;buildChips();render();}
 /* ===== render ===== */
 function threadCell(t){const sw=swatches(t).map(c=>`<i style="background:${c}"></i>`).join("");const l=threadLabel(t);if(!l)return'<span class="none">—</span>';return`<div class="thread"><span class="sw">${sw||'<i style="background:var(--line)"></i>'}</span><span class="tlabel">${esc(l)}</span></div>`;}
 function plcCell(c){const p=parsePlc(c);if(!p)return'<span class="none">—</span>';return`<span class="chip"><span class="nm">${esc(p.name)}</span>${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span>`;}
-function folderCell(f){if(!f||!f.trim())return'<span class="none">—</span>';return`<a class="folder" href="https://drive.google.com/drive/search?q=${encodeURIComponent(f.trim())}" target="_blank" rel="noopener">🗂 ${esc(f)}</a>`;}
+function folderCell(f){if(!f||!f.trim())return'<span class="none">—</span>';return`<a class="folder" href="javascript:void(0)" onclick="openFolder(null,'Digitize folder · '+${JSON.stringify(esc(f))})">🗂 ${esc(f)}</a>`;}
 function pill(j,i){const m=sMeta(j.status);const st=m.bg?`background:${m.bg};color:${m.fg};border-color:transparent`:`background:transparent;color:var(--muted);border-color:var(--line)`;return `<button class="pill act" style="${st}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
 function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
 function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
@@ -432,7 +458,7 @@ function openSheet(){const j=JOBS[pickIdx];document.getElementById("sheetHead").
 function closeSheet(){document.getElementById("scrim").classList.remove("open");document.getElementById("sheet").classList.remove("open");}
 document.addEventListener("click",e=>{if(!e.target.closest("#menu")&&!e.target.closest(".pill.act"))closeMenu();});
 window.addEventListener("scroll",closeMenu,true);
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeSheet();}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeSheet();closeFolder();}});
 document.getElementById("chips").addEventListener("click",e=>{const b=e.target.closest("[data-key]");if(b)setFilter(b.dataset.key);});
 document.getElementById("menu").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
 document.getElementById("sheetBody").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
@@ -457,8 +483,22 @@ applyThemeIcon();
 document.getElementById("search").addEventListener("keyup",e=>{if(e.key==="Escape"){e.target.value="";render();}});
 
 /* ===== artwork folder (file picker v1: opens your Drive folder) ===== */
-const DRIVE_FOLDER="https://drive.google.com/drive/folders/1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";
-function openArtwork(side){window.open(DRIVE_FOLDER,"_blank","noopener");toast((side?side+" · ":"")+"opening artwork folder…");}
+const ARTWORK_FOLDER_ID="1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";
+function openFolder(folderId,title){
+  folderId=folderId||ARTWORK_FOLDER_ID;
+  document.getElementById("fm-title").textContent=title||"Artwork folder";
+  document.getElementById("fm-frame").src="https://drive.google.com/embeddedfolderview?id="+folderId+"#grid";
+  document.getElementById("fm-open").href="https://drive.google.com/drive/folders/"+folderId;
+  document.getElementById("fscrim").classList.add("open");
+  document.getElementById("fmodal").classList.add("open");
+}
+function closeFolder(){document.getElementById("fscrim").classList.remove("open");document.getElementById("fmodal").classList.remove("open");document.getElementById("fm-frame").src="";}
+function openArtwork(side){openFolder(null,(side?side+" · ":"")+"Artwork folder");}
+
+/* row height (Expand rows): compact / normal / tall */
+const RH=["normal","compact","expanded"];
+function applyRowH(v){const t=document.querySelector(".card table");if(t)t.setAttribute("data-rh",v);}
+function cycleRowH(){const t=document.querySelector(".card table");const cur=t.getAttribute("data-rh")||"normal";const nx=RH[(RH.indexOf(cur)+1)%RH.length];applyRowH(nx);try{localStorage.setItem("cobra-rh",nx);}catch(e){}toast("Row height: "+nx);}
 
 /* ===== column resize (drag header edges; widths persist) ===== */
 const COLDEF=[40,182,112,58,290,150,132,132,132,150,150];
@@ -529,6 +569,7 @@ async function persistMove(fromRow,toRow){
 
 load();
 initTable();
+try{var _rh=localStorage.getItem("cobra-rh");if(_rh)applyRowH(_rh);}catch(e){}
 /* auto-refresh: keep the app near-live with the sheet (only when connected) */
 setInterval(function(){
   if(!IS_LIVE || document.hidden) return;
@@ -537,5 +578,16 @@ setInterval(function(){
   load();
 }, 45000);
 </script>
+<div class="fscrim" id="fscrim" onclick="closeFolder()"></div>
+<div class="fmodal" id="fmodal" role="dialog" aria-modal="true" aria-label="Folder contents">
+  <div class="fm-head">
+    <span id="fm-title">Artwork folder</span>
+    <span class="fm-actions">
+      <a class="fm-open" id="fm-open" target="_blank" rel="noopener">Open in Drive ↗</a>
+      <button onclick="closeFolder()" aria-label="Close">✕</button>
+    </span>
+  </div>
+  <iframe class="fm-frame" id="fm-frame" src="" title="Folder contents" referrerpolicy="no-referrer"></iframe>
+</div>
 </body>
 </html>
