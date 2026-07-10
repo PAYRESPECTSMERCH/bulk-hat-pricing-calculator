@@ -21,10 +21,13 @@
  *   ?action=setStatus&row=<n>&status=<s> -> { ok:true }
  */
 
-var SHEET_TAB = "";   // "" = first/active tab, or e.g. "Sheet1"
+// Recommended: create a NEW standalone Apps Script project so this does not
+// collide with the sheet's existing bound scripts. It targets the sheet by ID.
+var SHEET_ID = "1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI";
+var SHEET_TAB = "";   // "" = first tab, or e.g. "Sheet1"
 
 function getSheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(SHEET_ID);
   return SHEET_TAB ? ss.getSheetByName(SHEET_TAB) : ss.getSheets()[0];
 }
 
