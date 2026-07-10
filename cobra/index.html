@@ -133,6 +133,7 @@
   .pill.act{cursor:pointer}
   .pill.act::after{content:"⌄";margin-left:1px;font-size:12px;opacity:.6}
   .p-q{background:var(--qbg);color:var(--q)} .p-m{background:var(--mbg);color:var(--m)} .p-d{background:var(--dbg);color:var(--d)}
+  tbody td .pill{white-space:normal;text-align:left;max-width:100%}
   .order{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .puff{font-size:10px;font-weight:800;color:#fff;background:#d93a34;border-radius:6px;padding:3px 6px;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 2px rgba(217,58,52,.35)}
   .details{max-width:320px;line-height:1.45;color:var(--ink)}
@@ -147,6 +148,23 @@
   .details .dl b{display:inline-block;min-width:42px;font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--muted);vertical-align:top}
   .details .dlead{display:block;margin-bottom:3px;font-weight:600}
   .jc .rn{font-size:11px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;background:var(--panel-2);border-radius:6px;padding:2px 7px;margin-right:2px}
+  /* drag-to-reorder */
+  .rownum{white-space:nowrap}
+  .grip{display:none;cursor:grab;color:var(--muted);font-size:13px;margin-right:5px;touch-action:none;user-select:none;vertical-align:middle}
+  .reorderable .grip{display:inline}
+  .grip:active{cursor:grabbing}
+  tr.dragging{opacity:.45}
+  tr.drop-before td{box-shadow:inset 0 3px 0 -1px var(--accent)}
+  tr.drop-after td{box-shadow:inset 0 -3px 0 -1px var(--accent)}
+  /* column resize */
+  thead th{position:relative}
+  .rz{position:absolute;top:0;right:-1px;width:9px;height:100%;cursor:col-resize;user-select:none;touch-action:none;z-index:3}
+  .rz:hover{background:linear-gradient(var(--accent),var(--accent));background-size:2px 100%;background-position:center;background-repeat:no-repeat;opacity:.5}
+  /* clickable artwork cells */
+  .plc{cursor:pointer}
+  .plc:hover{background:var(--accent-weak)}
+  .jc .pr{cursor:pointer;border-radius:8px;margin:-2px -4px;padding:2px 4px}
+  .jc .pr:active{background:var(--accent-weak)}
   .thread{display:flex;align-items:center;gap:8px;max-width:190px}
   .sw{display:flex;flex-shrink:0}
   .sw i{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1.4px var(--ring);margin-left:-4px}
@@ -393,13 +411,14 @@ function render(){const list=listNow();const tb=document.getElementById("rows"),
   if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else{
     tb.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);const m=sMeta(j.status);const num=/^[#]?\d{6,}$/.test(String(j.order).trim());
-      return `<tr class="${isDone(m.key)?'completed':'active'}"><td class="rownum">${j._row||''}</td><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc">${plcCell(j.front)}</td><td class="plc">${plcCell(j.back)}</td><td class="plc">${plcCell(j.left)}</td><td class="plc">${plcCell(j.right)}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
+      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc" onclick="openArtwork('Front')" title="Open artwork folder">${plcCell(j.front)}</td><td class="plc" onclick="openArtwork('Back')" title="Open artwork folder">${plcCell(j.back)}</td><td class="plc" onclick="openArtwork('Left')" title="Open artwork folder">${plcCell(j.left)}</td><td class="plc" onclick="openArtwork('Right')" title="Open artwork folder">${plcCell(j.right)}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
     cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
-      const pl=[["FRONT","",j.front],["BACK","b",j.back],["LEFT","l",j.left],["RIGHT","r",j.right]].map(([lab,c,v])=>{const p=parsePlc(v);if(!p)return"";return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${esc(p.name)}</span><span class="ps">${p.size?esc(p.size):"—"}</span></div>`;}).join("");
+      const pl=[["FRONT","",j.front],["BACK","b",j.back],["LEFT","l",j.left],["RIGHT","r",j.right]].map(([lab,c,v])=>{const p=parsePlc(v);if(!p)return"";return`<div class="pr" onclick="openArtwork('${lab}')" title="Open artwork folder"><span class="ploc ${c}">${lab}</span><span class="pn">${esc(p.name)}</span><span class="ps">${p.size?esc(p.size):"—"}</span></div>`;}).join("");
       return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
   }
   const dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
   document.getElementById("count").textContent=`Showing ${list.length} of ${JOBS.length} · ${JOBS.length-dn} active · ${dn} done`;
+  refreshReorderable();
 }
 
 /* ===== status change (popover desktop / sheet mobile) ===== */
@@ -432,11 +451,84 @@ const THEMES=["light","dark","warm"];
 function curTheme(){return document.documentElement.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");}
 function applyThemeIcon(){const t=curTheme();document.getElementById("themeIcon").textContent=t==="dark"?"☾":t==="warm"?"❋":"☀";document.getElementById("theme").title="Theme: "+t+" (tap to switch)";}
 function toggleTheme(){const next=THEMES[(THEMES.indexOf(curTheme())+1)%THEMES.length];document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("cobra-theme",next);}catch(e){}applyThemeIcon();}
-(function(){try{const t=localStorage.getItem("cobra-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+(function(){var t="dark";try{t=localStorage.getItem("cobra-theme")||"dark";}catch(e){}document.documentElement.setAttribute("data-theme",t);})();
 applyThemeIcon();
 
 document.getElementById("search").addEventListener("keyup",e=>{if(e.key==="Escape"){e.target.value="";render();}});
+
+/* ===== artwork folder (file picker v1: opens your Drive folder) ===== */
+const DRIVE_FOLDER="https://drive.google.com/drive/folders/1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";
+function openArtwork(side){window.open(DRIVE_FOLDER,"_blank","noopener");toast((side?side+" · ":"")+"opening artwork folder…");}
+
+/* ===== column resize (drag header edges; widths persist) ===== */
+const COLDEF=[40,182,112,58,290,150,132,132,132,150,150];
+function loadColW(){try{const s=JSON.parse(localStorage.getItem("cobra-colw"));if(Array.isArray(s)&&s.length===COLDEF.length)return s;}catch(e){}return null;}
+function saveColW(w){try{localStorage.setItem("cobra-colw",JSON.stringify(w));}catch(e){}}
+let COLS=null, COLW=loadColW()||COLDEF.slice();
+function initTable(){
+  const table=document.querySelector('.card table');
+  if(!table||table.querySelector('colgroup'))return;
+  const ths=[...table.querySelectorAll('thead th')];
+  const cg=document.createElement('colgroup');
+  ths.forEach((th,i)=>{const c=document.createElement('col');c.style.width=(COLW[i]||COLDEF[i])+'px';cg.appendChild(c);
+    if(i<ths.length-1){const h=document.createElement('span');h.className='rz';h.dataset.col=i;th.appendChild(h);}});
+  table.insertBefore(cg,table.querySelector('thead'));
+  table.style.tableLayout='fixed';table.style.minWidth=COLW.reduce((a,b)=>a+b,0)+'px';
+  COLS=[...cg.querySelectorAll('col')];
+  let rz=null;
+  table.querySelectorAll('.rz').forEach(h=>{
+    h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const i=+h.dataset.col;rz={i};rz.x=e.clientX;rz.w=COLS[i].getBoundingClientRect().width;try{h.setPointerCapture(e.pointerId);}catch(_){}});
+    h.addEventListener('pointermove',e=>{if(!rz)return;const nw=Math.max(46,Math.min(680,rz.w+(e.clientX-rz.x)));COLS[rz.i].style.width=nw+'px';COLW[rz.i]=nw;table.style.minWidth=COLW.reduce((a,b)=>a+b,0)+'px';});
+    h.addEventListener('pointerup',()=>{if(rz){saveColW(COLW);rz=null;}});
+  });
+}
+
+/* ===== drag-to-reorder rows (unfiltered All view; writes new order to sheet) ===== */
+function canReorder(){return FILTER==='all' && !document.getElementById('search').value.trim();}
+function refreshReorderable(){const el=document.getElementById('rows');if(el)el.classList.toggle('reorderable',canReorder());}
+let drag=null;
+function clearDrop(){document.querySelectorAll('#rows tr.drop-before,#rows tr.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));}
+document.getElementById('rows').addEventListener('pointerdown',e=>{
+  const grip=e.target.closest('.grip'); if(!grip)return;
+  if(!canReorder()){toast('Clear filters & search to reorder',true);return;}
+  e.preventDefault();
+  const tr=grip.closest('tr'); drag={from:+tr.dataset.idx,tr,to:null};
+  tr.classList.add('dragging'); try{grip.setPointerCapture(e.pointerId);}catch(_){}
+  document.addEventListener('pointermove',dragMove);
+  document.addEventListener('pointerup',dragUp,{once:true});
+});
+function dragMove(e){
+  if(!drag)return;
+  const rows=[...document.querySelectorAll('#rows tr')]; clearDrop();
+  let placed=false;
+  for(const r of rows){const b=r.getBoundingClientRect();if(e.clientY<b.top+b.height/2){r.classList.add('drop-before');drag.to=+r.dataset.idx;placed=true;break;}}
+  if(!placed){rows[rows.length-1].classList.add('drop-after');drag.to=JOBS.length;}
+}
+function dragUp(){
+  document.removeEventListener('pointermove',dragMove);
+  if(!drag)return;
+  const from=drag.from, to=(drag.to==null?from:drag.to);
+  clearDrop(); if(drag.tr)drag.tr.classList.remove('dragging'); drag=null;
+  if(to===from||to===from+1)return;
+  const fromRow=JOBS[from]._row;
+  const it=JOBS.splice(from,1)[0];
+  const ins=to>from?to-1:to;
+  JOBS.splice(ins,0,it);
+  JOBS.forEach((j,k)=>{j._row=k+2;});
+  render();
+  if(CAN_WRITE)persistMove(fromRow,ins+2);
+  else toast('Reordered (preview — connect the sheet to save)');
+}
+async function persistMove(fromRow,toRow){
+  try{
+    const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=moveRow&from="+fromRow+"&to="+toRow;
+    const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0;
+    toast('Order saved to sheet');
+  }catch(e){toast("Couldn't save order — refreshing",true);load();}
+}
+
 load();
+initTable();
 /* auto-refresh: keep the app near-live with the sheet (only when connected) */
 setInterval(function(){
   if(!IS_LIVE || document.hidden) return;

@@ -67,6 +67,30 @@ function doGet(e) {
     return json_({ ok: true, row: row, status: status });
   }
 
+  if (action === "moveRow") {
+    var from = parseInt(e.parameter.from, 10);
+    var to = parseInt(e.parameter.to, 10);
+    if (!from || !to || from <= info.headerRow || to <= info.headerRow || from === to) {
+      return json_({ ok: false, error: "bad from/to" });
+    }
+    var lastCol = Math.max(sh.getLastColumn(), 10);
+    var src = sh.getRange(from, 1, 1, lastCol);
+    var vals = src.getValues();
+    var rich = src.getRichTextValues();   // preserves hyperlinks in placement cells
+    sh.deleteRow(from);
+    var dest = to > from ? to - 1 : to;   // account for the removed row
+    if (dest > sh.getLastRow()) {
+      sh.insertRowAfter(sh.getLastRow());
+      dest = sh.getLastRow();
+    } else {
+      sh.insertRowBefore(dest);
+    }
+    var tgt = sh.getRange(dest, 1, 1, lastCol);
+    tgt.setValues(vals);
+    tgt.setRichTextValues(rich);
+    return json_({ ok: true, from: from, to: dest });
+  }
+
   // action === "list"
   var lastRow = sh.getLastRow();
   var lastCol = Math.max(sh.getLastColumn(), 10);
