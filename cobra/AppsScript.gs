@@ -13,27 +13,46 @@
  *   4. ▶ Run the `authorize` function once (approve Drive access).
  *   5. Deploy → Manage deployments → Edit → New version.
  */
-var SHEET_ID  = "1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI";
+var SHEET_ID  = "1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI";   // default sheet (overridable by ?sheetId=)
 var FOLDER_ID = "1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";   // artwork folder
 var SHEET_TAB = "";
 var FOLDER_MIME = "application/vnd.google-apps.folder";
 
-function getSheet_() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
+// Allow the dashboard to target any workbook by passing ?sheetId=... (multi-workbook switcher).
+function getSheet_(e) {
+  var id = (e && e.parameter && e.parameter.sheetId) ? e.parameter.sheetId : SHEET_ID;
+  var ss = SpreadsheetApp.openById(id);
   return SHEET_TAB ? ss.getSheetByName(SHEET_TAB) : ss.getSheets()[0];
 }
+// Map EVERY header cell -> its column index, so setCell works for any workbook's columns.
 function headerInfo_(sh) {
   var scan = Math.min(sh.getLastRow(), 4);
   var values = sh.getRange(1, 1, scan, sh.getLastColumn()).getValues();
   for (var i = 0; i < values.length; i++) {
     var up = values[i].map(function (c) { return String(c).trim().toUpperCase(); });
     if (up.indexOf("STATUS") !== -1) {
+      var cols = {};
+      for (var c = 0; c < up.length; c++) { if (up[c] !== "") cols[up[c]] = c + 1; }
       return { headerRow: i + 1, statusCol: up.indexOf("STATUS") + 1, timestampCol: up.indexOf("TIMESTAMP") + 1,
-        cols: { FRONT: up.indexOf("FRONT")+1, BACK: up.indexOf("BACK")+1, LEFT: up.indexOf("LEFT")+1, RIGHT: up.indexOf("RIGHT")+1,
-                ORDER: up.indexOf("ORDER")+1, DETAILS: up.indexOf("DETAILS")+1, THREAD: up.indexOf("THREAD")+1, FOLDER: up.indexOf("DIGITIZE FOLDER")+1 } };
+        cols: cols, headers: up };
     }
   }
-  return { headerRow: 1, statusCol: 1, timestampCol: 0, cols: {} };
+  return { headerRow: 1, statusCol: 1, timestampCol: 0, cols: {}, headers: [] };
+}
+// Header names whose cells carry Drive/URL hyperlinks worth returning to the client.
+function linkCols_(info) {
+  var out = {};
+  var want = ["ORDER","FRONT","BACK","LEFT","RIGHT","DIGITIZE FOLDER","DIGITIZED FOLDERS"];
+  for (var k in info.cols) { if (want.indexOf(k) !== -1) out[linkKey_(k)] = info.cols[k]; }
+  return out;
+}
+function linkKey_(header) {
+  if (header === "ORDER") return "order";
+  if (header === "FRONT") return "front";
+  if (header === "BACK") return "back";
+  if (header === "LEFT") return "left";
+  if (header === "RIGHT") return "right";
+  return "folder"; // DIGITIZE FOLDER / DIGITIZED FOLDERS
 }
 function json_(o){ return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
@@ -72,7 +91,7 @@ function authorize(){ Logger.log("OK: " + Drive.Files.get(FOLDER_ID).title); }
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || "list";
-  var sh = getSheet_(), info = headerInfo_(sh);
+  var sh = getSheet_(e), info = headerInfo_(sh);
 
   if (action === "setStatus") {
     var row=parseInt(e.parameter.row,10), status=e.parameter.status!=null?e.parameter.status:"";
@@ -133,7 +152,7 @@ function doGet(e) {
   if(lastRow>info.headerRow){
     var range=sh.getRange(info.headerRow+1,1,lastRow-info.headerRow,lastCol);
     var data=range.getValues(), rich=range.getRichTextValues();
-    var keys={front:info.cols.FRONT,back:info.cols.BACK,left:info.cols.LEFT,right:info.cols.RIGHT,order:info.cols.ORDER,folder:info.cols.FOLDER};
+    var keys=linkCols_(info);   // {front,back,left,right,order,folder} present only for this sheet's headers
     for(var r=0;r<data.length;r++){
       var vals=data[r].map(function(v){return v==null?"":String(v);});
       if(!vals.some(function(v){return v.trim()!=="";})) continue;

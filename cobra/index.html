@@ -105,6 +105,12 @@
   .barspace{flex:1}
   .iconbtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;width:40px;height:40px;
     font-size:17px;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;transition:transform .1s}
+  .wbsel{margin-left:6px;background:var(--panel);border:1px solid var(--line);border-radius:11px;height:40px;
+    padding:0 32px 0 13px;font-size:13.5px;font-weight:650;color:var(--ink);cursor:pointer;font-family:inherit;
+    box-shadow:var(--sh-sm);-webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 11px center}
+  .wbsel:hover{border-color:var(--accent)}
   .iconbtn:active{transform:scale(.93)}
   .iconbtn:disabled{opacity:.32;cursor:default}
   .iconbtn:disabled:active{transform:none}
@@ -139,7 +145,9 @@
   table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:1160px}
   thead th{background:var(--panel-2);text-align:left;color:var(--muted);font-size:11px;font-weight:700;
     letter-spacing:.6px;text-transform:uppercase;padding:13px 14px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:2}
-  thead th.grp{border-left:1px solid var(--line)}
+  thead th.plc-h{background:var(--line-2)}
+  thead th.plc-h-a{border-left:1px solid var(--line)}
+  thead th.plc-h-z{border-right:1px solid var(--line)}
   tbody td{padding:14px;border-bottom:1px solid var(--line-2);vertical-align:top}
   tbody tr:last-child td{border-bottom:none}
   tbody tr{transition:background .12s}
@@ -169,15 +177,12 @@
   body.grouped .grip{visibility:hidden}
   .iconbtn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-weak)}
   /* per-column alignment: Order + Front/Back/Left/Right centered; rest left */
-  thead th:nth-child(3),tbody td:nth-child(3),
-  thead th:nth-child(6),tbody td:nth-child(6),
-  thead th:nth-child(7),tbody td:nth-child(7),
-  thead th:nth-child(8),tbody td:nth-child(8),
-  thead th:nth-child(9),tbody td:nth-child(9){text-align:center}
-  /* placement header band brackets Front/Back/Left/Right */
-  thead th:nth-child(6),thead th:nth-child(7),thead th:nth-child(8),thead th:nth-child(9){background:var(--line-2)}
-  thead th:nth-child(6){border-left:1px solid var(--line)}
-  thead th:nth-child(9){border-right:1px solid var(--line)}
+  th.tac,td.tac{text-align:center}
+  /* mobile card key/value meta (Style / Qty / Color etc.) */
+  .jc .kvs{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:8px}
+  .jc .kv{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .jc .kv .k{font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+  .jc .kv .v{font-size:13px;color:var(--ink)}
   /* placement + folder cells look/behave like links */
   .plc .chip{color:var(--accent)}
   .plc:hover .chip .nm{text-decoration:underline}
@@ -369,8 +374,9 @@
 <div class="wrap">
   <!-- app bar -->
   <div class="bar">
-    <div class="mark">C</div>
-    <div class="brand"><div class="n">Cobra Digitize</div><div class="s">Apparel Hotline</div></div>
+    <div class="mark" id="wbMark">C</div>
+    <div class="brand"><div class="n" id="wbName">Cobra Digitize</div><div class="s">Apparel Hotline</div></div>
+    <select id="wbSel" class="wbsel" onchange="setWorkbook(this.value)" aria-label="Switch workbook"></select>
     <div class="barspace"></div>
     <button class="iconbtn" id="undoBtn" title="Undo (⌘Z / Ctrl+Z)" aria-label="Undo" onclick="undo()" disabled><span>↶</span></button>
     <button class="iconbtn" id="redoBtn" title="Redo (⌘⇧Z / Ctrl+Y)" aria-label="Redo" onclick="redo()" disabled><span>↷</span></button>
@@ -396,11 +402,7 @@
   <div class="card">
     <div class="scroll">
       <table>
-        <thead><tr>
-          <th class="rownum-h">#</th><th>Status</th><th>Order</th><th>3D</th><th>Details</th>
-          <th class="grp">Front</th><th class="grp">Back</th><th class="grp">Left</th><th class="grp">Right</th>
-          <th>Thread</th><th>Digitize Folder</th>
-        </tr></thead>
+        <thead><tr id="headrow"></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -410,7 +412,7 @@
 
   <div class="foot">
     <span id="count"></span>
-    <span>Cobra Digitize · mirrors the live Google Sheet</span>
+    <span id="footwb">Cobra Digitize · mirrors the live Google Sheet</span>
   </div>
 </div>
 
@@ -423,43 +425,84 @@
 
 <script>
 /* ===== CONFIG (see cobra/SETUP.md) ===== */
-const CONFIG={
-  APPS_SCRIPT_URL:"https://script.google.com/macros/s/AKfycby1m0Y9Gmn6RghhXrejd7IfP4V_5odyp0T1V7cZDAoNuJJIIEldQwugqHU5UpzF8lzBpw/exec",   // live read + two-way write-back
-  SHEET_ID:"1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI",
-  GID:"0", USE_LIVE:true
-};
-
-/* ===== status model — mirrors the sheet's STATUS dropdown (labels + colors) ===== */
-const STATUS=[
-  {key:"",label:"Unassigned",bg:null,fg:"var(--muted)",dot:"#b0b0b6",rank:5},
-  {key:"READY",label:"READY",bg:"#202124",fg:"#ffffff",dot:"#202124",rank:6},
-  {key:"SEND MOCKUP",label:"SEND MOCKUP",bg:"#8b3dd6",fg:"#ffffff",dot:"#8b3dd6",rank:7},
-  {key:"WAITING ON CUSTOMER APPROVAL",label:"WAITING ON CUSTOMER APPROVAL",bg:"#f9d2c4",fg:"#8a3d24",dot:"#e8825f",rank:8},
-  {key:"DESIGN QUESTIONS",label:"DESIGN QUESTIONS",bg:"#fce9a6",fg:"#7a6008",dot:"#e6b800",rank:3},
-  {key:"UPDATE ARTWORK",label:"UPDATE ARTWORK",bg:"#d93a34",fg:"#ffffff",dot:"#d93a34",rank:2},
-  {key:"CUSTOMER APPROVED",label:"CUSTOMER APPROVED",bg:"#c8e9c1",fg:"#2c6b2a",dot:"#46b649",rank:9},
-  {key:"CANNOT FIND ORDER DETAILS",label:"CANNOT FIND ORDER DETAILS",bg:"#9e1414",fg:"#ffffff",dot:"#9e1414",rank:0},
-  {key:"HELP FIND ORDER #",label:"HELP FIND ORDER #",bg:"#f0a24a",fg:"#5a3410",dot:"#ef9430",rank:1},
-  {key:"COMPLETED",label:"COMPLETED",bg:"#16a34a",fg:"#ffffff",dot:"#16a34a",rank:10},
-  {key:"REVIEW DETAILS",label:"REVIEW DETAILS",bg:"#1a6fe0",fg:"#ffffff",dot:"#1a6fe0",rank:4}
+/* ===== workbooks — one dashboard, multiple sheets (switcher) =====
+   Each workbook defines its own sheet, columns, statuses and artwork folder.
+   Column types: status · order · badge3d · details · text · thread · swatch · placement · folder */
+const WORKBOOKS=[
+  {
+    id:"cobra", name:"Cobra Digitize",
+    appsScriptUrl:"https://script.google.com/macros/s/AKfycby1m0Y9Gmn6RghhXrejd7IfP4V_5odyp0T1V7cZDAoNuJJIIEldQwugqHU5UpzF8lzBpw/exec",
+    sheetId:"1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI", gid:"0",
+    artworkFolderId:"1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0",
+    columns:[
+      {key:"status",type:"status",label:"Status",w:182},
+      {key:"order",type:"order",label:"Order",w:112},
+      {key:"puff",type:"badge3d",label:"3D",w:58},
+      {key:"details",type:"details",label:"Details",w:290},
+      {key:"front",type:"placement",label:"Front",w:132,grp:1},
+      {key:"back",type:"placement",label:"Back",w:132,grp:1},
+      {key:"left",type:"placement",label:"Left",w:132,grp:1},
+      {key:"right",type:"placement",label:"Right",w:132,grp:1},
+      {key:"thread",type:"thread",label:"Thread",w:150},
+      {key:"folder",type:"folder",label:"Digitize Folder",w:150}
+    ],
+    statuses:[
+      {key:"",label:"Unassigned",tier:"quiet",stage:"active",rank:5,dot:{light:"#b0b0b6",dark:"#8e8e93"}},
+      {key:"READY",label:"Ready",tier:"quiet",stage:"active",rank:6,dot:{light:"#33363b",dark:"#c9ccd4"}},
+      {key:"SEND MOCKUP",label:"Send Mockup",tier:"quiet",stage:"active",rank:7,dot:{light:"#8b3dd6",dark:"#b48ce9"}},
+      {key:"WAITING ON CUSTOMER APPROVAL",label:"Waiting on Approval",tier:"quiet",stage:"waiting",rank:8,dot:{light:"#e8825f",dark:"#e8825f"}},
+      {key:"REVIEW DETAILS",label:"Review Details",tier:"quiet",stage:"active",rank:4,dot:{light:"#1a6fe0",dark:"#6ea8fe"}},
+      {key:"CUSTOMER APPROVED",label:"Customer Approved",tier:"quiet",stage:"done",rank:9,dot:{light:"#46b649",dark:"#3ecf7a"}},
+      {key:"COMPLETED",label:"Completed",tier:"quiet",stage:"done",rank:10,dot:{light:"#16a34a",dark:"#3ecf7a"}},
+      {key:"UPDATE ARTWORK",label:"Update Artwork",tier:"urgent",stage:"needs",rank:2,dot:{light:"#d93a34",dark:"#ff6b64"},fill:{light:{bg:"#fcebea",fg:"#c22b25"},dark:{bg:"#46201d",fg:"#ffa39c"}}},
+      {key:"CANNOT FIND ORDER DETAILS",label:"Cannot Find Order",tier:"urgent",stage:"needs",rank:0,dot:{light:"#9e1414",dark:"#e05252"},fill:{light:{bg:"#f7e6e6",fg:"#9e1414"},dark:{bg:"#3d1616",fg:"#ff9c9c"}}},
+      {key:"DESIGN QUESTIONS",label:"Design Questions",tier:"urgent",stage:"needs",rank:3,dot:{light:"#e6b800",dark:"#e6b800"},fill:{light:{bg:"#fbf3d6",fg:"#8a6d00"},dark:{bg:"#3a2c12",fg:"#f0b64a"}}},
+      {key:"HELP FIND ORDER #",label:"Help Find Order #",tier:"urgent",stage:"needs",rank:1,dot:{light:"#ef9430",dark:"#ef9430"},fill:{light:{bg:"#fdf0e0",fg:"#b5691a"},dark:{bg:"#3f2a10",fg:"#f5b06a"}}}
+    ]
+  },
+  {
+    id:"artstitch", name:"Art & Stitch",
+    appsScriptUrl:"https://script.google.com/macros/s/AKfycby1m0Y9Gmn6RghhXrejd7IfP4V_5odyp0T1V7cZDAoNuJJIIEldQwugqHU5UpzF8lzBpw/exec",
+    sheetId:"1oDpDr70V8ZB5SF_RZRpvSwGPHrLpmg-mZLkIUgqkIkQ", gid:"0",
+    artworkFolderId:"",
+    columns:[
+      {key:"status",type:"status",label:"Status",w:160},
+      {key:"order",type:"order",label:"Order",w:110},
+      {key:"puff",type:"badge3d",label:"3D",w:58},
+      {key:"details",type:"details",label:"Details",w:300},
+      {key:"qty",type:"text",label:"Qty",w:66,align:"center"},
+      {key:"style",type:"text",label:"Style",w:150},
+      {key:"color",type:"swatch",label:"Color",w:140},
+      {key:"thread",type:"thread",label:"Thread Color",w:150},
+      {key:"folder",type:"folder",label:"Digitized Folders",w:160}
+    ],
+    // NOTE: status colors below are sensible defaults — send the real dropdown colors to fine-tune.
+    statuses:[
+      {key:"",label:"Unassigned",tier:"quiet",stage:"active",rank:5,dot:{light:"#b0b0b6",dark:"#8e8e93"}},
+      {key:"READY",label:"Ready",tier:"quiet",stage:"active",rank:4,dot:{light:"#1a6fe0",dark:"#6ea8fe"}},
+      {key:"PULL INVENDORY",label:"Pull Inventory",tier:"urgent",stage:"needs",rank:1,dot:{light:"#ef9430",dark:"#ef9430"},fill:{light:{bg:"#fdf0e0",fg:"#b5691a"},dark:{bg:"#3f2a10",fg:"#f5b06a"}}},
+      {key:"AT VENDOR",label:"At Vendor",tier:"quiet",stage:"waiting",rank:6,dot:{light:"#e8825f",dark:"#e8825f"}},
+      {key:"PULLED",label:"Pulled",tier:"quiet",stage:"done",rank:9,dot:{light:"#16a34a",dark:"#3ecf7a"}}
+    ]
+  }
 ];
-const SMAP={};STATUS.forEach(s=>SMAP[s.key]=s);
-function sMeta(raw){const s=(raw||"").trim().toUpperCase();return SMAP[s]||{key:s,label:raw||"Unassigned",bg:null,fg:"var(--muted)",dot:"#b0b0b6",rank:5};}
-function isDone(k){return k==="COMPLETED"||k==="CUSTOMER APPROVED";}
+function wbById(id){for(const w of WORKBOOKS)if(w.id===id)return w;return WORKBOOKS[0];}
+let WB=wbById((function(){try{return localStorage.getItem("cobra-wb")||"cobra";}catch(e){return "cobra";}})());
+// Back-compat shim: existing CONFIG.* call sites resolve against the active workbook.
+const CONFIG={get APPS_SCRIPT_URL(){return WB.appsScriptUrl;},get SHEET_ID(){return WB.sheetId;},get GID(){return WB.gid;},USE_LIVE:true};
 
-/* ===== Tiered Emphasis status model ===== */
-const STATUS_URGENT={"UPDATE ARTWORK":1,"CANNOT FIND ORDER DETAILS":1,"DESIGN QUESTIONS":1,"HELP FIND ORDER #":1};
-const STATUS_LABELS={"":"Unassigned","READY":"Ready","SEND MOCKUP":"Send Mockup","WAITING ON CUSTOMER APPROVAL":"Waiting on Approval",
-  "DESIGN QUESTIONS":"Design Questions","UPDATE ARTWORK":"Update Artwork","CUSTOMER APPROVED":"Customer Approved",
-  "CANNOT FIND ORDER DETAILS":"Cannot Find Order","HELP FIND ORDER #":"Help Find Order #","COMPLETED":"Completed","REVIEW DETAILS":"Review Details"};
-// CSS-var suffix per status key (resolves colors per theme via var())
-const STATUS_VAR={"":"unassigned","READY":"ready","SEND MOCKUP":"mockup","WAITING ON CUSTOMER APPROVAL":"waiting",
-  "REVIEW DETAILS":"review","CUSTOMER APPROVED":"approved","COMPLETED":"completed",
-  "UPDATE ARTWORK":"ua","CANNOT FIND ORDER DETAILS":"cf","DESIGN QUESTIONS":"dq","HELP FIND ORDER #":"hf"};
+/* ===== status model (per active workbook, tiered + theme-resolved) ===== */
+let STATUS=[], SMAP={};
+function rebuildStatus(){STATUS=WB.statuses;SMAP={};STATUS.forEach(s=>SMAP[s.key]=s);}
+rebuildStatus();
 function statusKey(raw){return (raw||"").trim().toUpperCase();}
-function statusLabel(raw){const k=statusKey(raw);return STATUS_LABELS[k]!=null?STATUS_LABELS[k]:(raw||"Unassigned");}
-function isUrgent(raw){return !!STATUS_URGENT[statusKey(raw)];}
-function statusDotVar(raw){const suf=STATUS_VAR[statusKey(raw)]||"unassigned";return isUrgent(raw)?`var(--su-${suf}-dot)`:`var(--sq-${suf})`;}
+function sMeta(raw){const s=statusKey(raw);return SMAP[s]||{key:s,label:raw||"Unassigned",tier:"quiet",stage:"active",rank:5,dot:{light:"#b0b0b6",dark:"#8e8e93"}};}
+function statusLabel(raw){return sMeta(raw).label;}
+function isUrgent(raw){return sMeta(raw).tier==="urgent";}
+function isDone(k){const m=SMAP[statusKey(k)];return m?m.stage==="done":false;}
+function themeMode(){try{return curTheme()==="dark"?"dark":"light";}catch(e){return "dark";}}
+function statusDot(raw){const m=sMeta(raw);return (m.dot&&m.dot[themeMode()])||"#8e8e93";}
+function statusFill(raw){const m=sMeta(raw);const f=m.fill&&m.fill[themeMode()];return f||{bg:"transparent",fg:"var(--ink)"};}
 
 /* ===== thread colors ===== */
 const COLORS={"yellow gold":"#e0a400","baby blue":"#7dd3fc","royal blue":"#1d4ed8","forest green":"#166534","navy":"#1e2a52","black":"#111111","white":"#ffffff","royal":"#1d4ed8","gold":"#e0a400","yellow":"#f2c200","pink":"#ec4899","purple":"#7c3aed","green":"#1a9e4b","red":"#d21f28","cream":"#f3ecd8","brown":"#7c4a1e","tan":"#d2b48c","orange":"#f97316","blue":"#2563eb","grey":"#9ca3af","gray":"#9ca3af","natural":"#efe7d6","maroon":"#7f1d1d","teal":"#0e8a89","silver":"#c0c0c8","charcoal":"#36454f"};
@@ -511,7 +554,8 @@ function parseCSV(text){const rows=[];let row=[],f="",i=0,q=false;while(i<text.l
 
 /* ===== data (mirrors the Cobra Digitize sheet; live source overrides this) ===== */
 let JOBS=[], IS_LIVE=false, CAN_WRITE=false, FILTER="all", EDIT=null, SELECTED=null;
-const DATA=[
+const SAMPLES={
+cobra:[
 ["READY","4820015501","3D","FRONT: SUMMIT LABS - 3\" W","SUMMIT LABS (FRONT) - 3\" W","","","","THREAD BLACK","4820015501"],
 ["SEND MOCKUP","4820015502","","FRONT: HARBOR & PINE / EST. 2021 — QTY 24","HARBOR & PINE","","","","THREAD NAVY","4820015502"],
 ["WAITING ON CUSTOMER APPROVAL","4820015503","","FRONT: MEADOW LARK SCRIPT - 4\" W","MEADOW LARK (FRONT) - 4\" W","","","","THREAD FOREST GREEN","4820015503"],
@@ -535,15 +579,30 @@ const DATA=[
 ["COMPLETED","4820015520","3D","FRONT: 3D COPPER CREEK - 4.5\" W LEFT: 2020 - 2\" W","3D COPPER CREEK - 4.5\" W","","2020 (LEFT) - 2\" W","","THREAD FRONT: BLACK / LEFT: GOLD","4820015520"],
 ["CUSTOMER APPROVED","4820015521","","FRONT: FROM MAPLE GROVE WITH LOVE - 5\" W — QTY 100","FROM MAPLE GROVE WITH LOVE - 5\" W","","","","THREAD BLACK","4820015521"],
 ["","4820015522","","FRONT: TIDEWATER TEES - 3\" W","TIDEWATER TEES (FRONT) - 3\" W","","","","THREAD PURPLE WITH GOLD OUTLINE","4820015522"]
-];
-function toJob(v,r,links){var j={_row:r||null,status:v[0]||"",order:v[1]||"",puff:v[2]||"",details:v[3]||"",front:v[4]||"",back:v[5]||"",left:v[6]||"",right:v[7]||"",thread:v[8]||"",folder:v[9]||""};if(links){j.frontUrl=links.front||"";j.backUrl=links.back||"";j.leftUrl=links.left||"";j.rightUrl=links.right||"";j.orderUrl=links.order||"";j.folderUrl=links.folder||"";}return j;}
+],
+artstitch:[
+["READY","","","VINTAGE HOLLOW","1","OTTO CAP 31-069","BLACK / NATURAL","BLACK","5501120031"],
+["READY","","3D","FRONT: 3D CREST - 4\" W BACK: RIDGELINE - 3.2\" W THREAD WHITE","1","OTTO CAP 31-069","BLACK","WHITE","5501120032"],
+["READY","","","FRONT: FOX LOGO ORANGE - 9\" W - CENTER CHEST THREAD ORANGE","4","HOODIE","CAMO","BRIGHT ORANGE","5501120033"],
+["AT VENDOR","","3D","MEADOW RIGHT — HARLOW","1","OTTO CAP 31-069","RED / NATURAL","FRONT ROYAL BLUE RIGHT YELLOW GOLD",""],
+["AT VENDOR","","3D","SPRING LAKE","6","OTTO CAP 31-069","NAVY / NATURAL","NAVY",""],
+["AT VENDOR","","3D","ANNA MARIA","10","OTTO CAP (5 PANEL)","BLACK / WHITE","BLACK",""],
+["AT VENDOR","5502340019","","FRONT: RDH - 8\" W THREAD: NAVY WITH WHITE OUTLINE","3","MOCKNECK","GRAY","NAVY WITH WHITE OUTLINE","5502340019"],
+["PULL INVENDORY","","3D","NOLDER","1","OTTO CAP 31-069","BLACK / WHITE","WHITE",""],
+["PULL INVENDORY","","3D","BONUS MAMA LEFT","1","OTHER BRAND","CAMO / NATURAL","CREAM MATCH HAT AND BROWN SIDE",""],
+["PULLED","","3D","FRONT: LUCK OR SOMETHING LEFT: LEAVE THE LIGHT ON","3","OTHER BRAND","LIGHT PINK / NATURAL","PINK MATCH HAT GREEN / GOLD",""],
+["PULLED","","","XL GEORGE MASON","1","MOCKNECK","GRAY","",""]
+]
+};
+function toJob(v,r,links){var j={_row:r||null};WB.columns.forEach(function(c,idx){j[c.key]=v[idx]!=null?String(v[idx]):"";});
+  if(links){WB.columns.forEach(function(c){if(c.type==="order"||c.type==="folder"||c.type==="placement")j[c.key+"Url"]=links[c.key]||"";});}return j;}
 
 async function load(){
   const btn=document.getElementById("refresh");btn.classList.add("spin");
   let jobs=null;
-  if(CONFIG.APPS_SCRIPT_URL){try{const res=await fetch(CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=list",{cache:"no-store"});if(res.ok){const d=await res.json();const arr=d.rows||d;jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row,r.links));IS_LIVE=true;CAN_WRITE=true;}}catch(e){}}
+  if(CONFIG.APPS_SCRIPT_URL){try{const res=await fetch(apiURL("action=list"),{cache:"no-store"});if(res.ok){const d=await res.json();const arr=d.rows||d;jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row,r.links));IS_LIVE=true;CAN_WRITE=true;}}catch(e){}}
   if(!jobs&&CONFIG.USE_LIVE&&CONFIG.SHEET_ID){const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CONFIG.GID}`;try{const res=await fetch(url,{cache:"no-store"});if(res.ok){const p=parseCSV(await res.text()).filter(r=>r.some(c=>c&&c.trim()));let st=0;for(let i=0;i<Math.min(p.length,3);i++){if(p[i].join("|").toUpperCase().includes("STATUS")){st=i+1;break;}}jobs=p.slice(st).map((r,i)=>toJob(r,st+i+1));IS_LIVE=true;CAN_WRITE=false;}}catch(e){}}
-  if(!jobs){jobs=DATA.map((r,i)=>toJob(r,i+2));IS_LIVE=false;CAN_WRITE=false;}
+  if(!jobs){jobs=(SAMPLES[WB.id]||[]).map((r,i)=>toJob(r,i+2));IS_LIVE=false;CAN_WRITE=false;}
   JOBS=jobs.filter(j=>j.order||j.details);
   btn.classList.remove("spin");buildChips();updateSync();render();
 }
@@ -585,25 +644,37 @@ function orderCell(j,i){ if(EDIT&&EDIT.i===i&&EDIT.f==='order') return editBox(j
     badge=`<div class="artb ${done?'ok':'miss'}" title="${a.filled} of ${a.req} placement${a.req===1?'':'s'} have artwork linked">${done?'✓ art':a.filled+'/'+a.req+' art'}</div>`; }
   return link+badge; }
 function detailsCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='details')?editBox(j.details,true):detailsHTML(j.details); }
-function threadCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='thread')?editBox(j.thread,false):threadCell(j.thread); }
+function threadFieldR(j,i,key){ return (EDIT&&EDIT.i===i&&EDIT.f===key)?editBox(j[key],false):threadCell(j[key]); }
+function textCellR(j,i,key){ return (EDIT&&EDIT.i===i&&EDIT.f===key)?editBox(j[key],false):(j[key]&&String(j[key]).trim()?esc(j[key]):'<span class="none">—</span>'); }
+// dispatch a cell by its column type
+function colAlign(c){return (c.align==="center"||c.type==="order"||c.type==="placement")?"tac":"";}
+function cellClass(c){let cl=("cell "+colAlign(c)).trim();if(c.type==="placement")cl+=" plc";else if(c.type==="details")cl+=" details";else if(c.type==="order")cl+=" order";else if(c.type==="folder")cl+=" folder";return cl;}
+function cellHTML(j,i,c){switch(c.type){
+  case "status": return pill(j,i);
+  case "order": return orderCell(j,i);
+  case "badge3d": return (j[c.key]&&String(j[c.key]).trim())?'<span class="puff">3D</span>':'<span class="none">—</span>';
+  case "details": return detailsCellR(j,i);
+  case "placement": return plcCellFull(j,i,c.key);
+  case "thread": case "swatch": return threadFieldR(j,i,c.key);
+  case "folder": return folderCell(j);
+  case "text": return textCellR(j,i,c.key);
+  default: return esc(j[c.key]||"");
+}}
 function editBox(v,multi){ v=esc(String(v==null?"":v)); return multi?`<textarea id="editinput" class="celledit">${v}</textarea><span class="edit-hint">Enter = new line · ⌘/Ctrl+Enter to save · Esc to cancel</span>`:`<input id="editinput" class="celledit" value="${v}"><span class="edit-hint">Enter to save · Esc to cancel</span>`; }
 function folderIdFromUrl(u){var m=String(u||"").match(/[-\w]{25,}/);return m?m[0]:"";}
 function folderCell(j){const f=j.folder;if(!f||!f.trim())return'<span class="none">—</span>';const fid=folderIdFromUrl(j.folderUrl);
   const ext=j.folderUrl?`<a class="folderext" href="${esc(j.folderUrl)}" target="_blank" rel="noopener">Open in new window ↗</a>`:"";
   return`<a class="folder" href="javascript:void(0)" onclick="openBrowse('${jss(fid)}','${jss(f)}')">🗂 ${esc(f)}</a>${ext}`;}
-function pill(j,i){const key=statusKey(j.status);const suf=STATUS_VAR[key]||"unassigned";const label=statusLabel(j.status);
-  if(isUrgent(key)){
-    return `<button class="pill urgent act" style="background:var(--su-${suf}-bg);color:var(--su-${suf}-fg)" onclick="openPicker(event,${i})" aria-haspopup="true"><span class="dot" style="background:var(--su-${suf}-dot)"></span>${esc(label)}</button>`;
+function pill(j,i){const label=statusLabel(j.status);const dot=statusDot(j.status);
+  if(isUrgent(j.status)){const f=statusFill(j.status);
+    return `<button class="pill urgent act" style="background:${f.bg};color:${f.fg}" onclick="openPicker(event,${i})" aria-haspopup="true"><span class="dot" style="background:${dot}"></span>${esc(label)}</button>`;
   }
-  return `<button class="pill quiet act" onclick="openPicker(event,${i})" aria-haspopup="true"><span class="qdot" style="background:var(--sq-${suf})"></span>${esc(label)}</button>`;}
+  return `<button class="pill quiet act" onclick="openPicker(event,${i})" aria-haspopup="true"><span class="qdot" style="background:${dot}"></span>${esc(label)}</button>`;}
 function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
-function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(FILTER==="needsart"){if(!needsArt(j))return false;}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
+function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(FILTER==="needsart"){if(!needsArt(j))return false;}else if(m.key!==FILTER)return false;if(q){const h=WB.columns.map(c=>j[c.key]||"").join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
 /* ===== stage grouping ===== */
 const STAGES=[{key:"needs",name:"Needs Action"},{key:"active",name:"Active"},{key:"waiting",name:"Waiting"},{key:"done",name:"Done"}];
-const STAGE_OF={"UPDATE ARTWORK":"needs","CANNOT FIND ORDER DETAILS":"needs","DESIGN QUESTIONS":"needs","HELP FIND ORDER #":"needs",
-  "":"active","READY":"active","SEND MOCKUP":"active","REVIEW DETAILS":"active",
-  "WAITING ON CUSTOMER APPROVAL":"waiting","CUSTOMER APPROVED":"done","COMPLETED":"done"};
-function stageOf(status){return STAGE_OF[statusKey(status)]||"active";}
+function stageOf(status){return sMeta(status).stage||"active";}
 let GROUPED=false, GCOL={};
 (function(){try{GROUPED=localStorage.getItem("cobra-grouped")==="1";GCOL=JSON.parse(localStorage.getItem("cobra-gcol")||"{}")||{};}catch(e){}})();
 function toggleGroup(){GROUPED=!GROUPED;try{localStorage.setItem("cobra-grouped",GROUPED?"1":"0");}catch(e){}updateGroupBtn();render();}
@@ -611,23 +682,29 @@ function toggleStage(k){GCOL[k]=!GCOL[k];try{localStorage.setItem("cobra-gcol",J
 function updateGroupBtn(){const b=document.getElementById("groupBtn");if(b)b.classList.toggle("on",GROUPED);}
 
 function rowHTML(j){const i=JOBS.indexOf(j);const m=sMeta(j.status);
-  return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td class="cell" data-i="${i}" data-f="status">${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td class="cell" data-i="${i}" data-f="puff">${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td class="cell" data-i="${i}" data-f="folder">${folderCell(j)}</td></tr>`;}
+  let tds=`<td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td>`;
+  WB.columns.forEach(c=>{ tds+=`<td class="${cellClass(c)}" data-i="${i}" data-f="${c.key}">${cellHTML(j,i,c)}</td>`; });
+  return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}">${tds}</tr>`;}
 function cardHTML(j){const i=JOBS.indexOf(j);
-  const pl=[["FRONT","front",""],["BACK","back","b"],["LEFT","left","l"],["RIGHT","right","r"]].map(([lab,key,c])=>{const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${JOBS.indexOf(j)},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
+  const pl=WB.columns.filter(c=>c.type==="placement").map(c=>{const lab=c.label.toUpperCase(),key=c.key,cl=key.charAt(0)==='f'?'':key.charAt(0);const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${cl}">${esc(lab)}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${i},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
+  const meta=WB.columns.filter(c=>c.type==="text").map(c=>{const v=j[c.key];if(!v||!String(v).trim())return"";return`<div class="kv"><span class="k">${esc(c.label)}</span><span class="v">${esc(v)}</span></div>`;}).join("");
+  const colorBits=WB.columns.filter(c=>c.type==="swatch"||c.type==="thread").map(c=>threadCell(j[c.key])).join("");
+  const folderCol=WB.columns.find(c=>c.type==="folder");
   const ca=artStats(j); const cadone=ca.filled>=ca.req||isDone(sMeta(j.status).key);
   const cabadge=ca.req?`<span class="artb ${cadone?'ok':'miss'}">${cadone?'✓ art':ca.filled+'/'+ca.req+' art'}</span>`:"";
-  return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${cabadge}${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}
+  return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${cabadge}${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}${meta?`<div class="kvs">${meta}</div>`:""}<div class="b">${colorBits}${folderCol?folderCell(j):""}</div></div>`;}
 
 function render(){const list=listNow();const tb=document.getElementById("rows"),cd=document.getElementById("cards");
   document.body.classList.toggle("grouped",GROUPED);
-  if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
+  const NCOL=WB.columns.length+1;
+  if(!list.length){tb.innerHTML=`<tr><td colspan="${NCOL}"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else if(GROUPED){
     let th="",ch="";
     for(const st of STAGES){
       const items=list.filter(j=>stageOf(j.status)===st.key); if(!items.length)continue;
       const col=!!GCOL[st.key];
       const head=`<span class="gchev">${col?'▸':'▾'}</span><span class="gdot" style="background:var(--stg-${st.key})"></span><span class="gname">${esc(st.name)}</span><span class="gcount">${items.length}</span>`;
-      th+=`<tr class="grouphdr" data-stage="${st.key}"><td colspan="11"><div class="ghd">${head}</div></td></tr>`+(col?"":items.map(rowHTML).join(""));
+      th+=`<tr class="grouphdr" data-stage="${st.key}"><td colspan="${NCOL}"><div class="ghd">${head}</div></td></tr>`+(col?"":items.map(rowHTML).join(""));
       ch+=`<div class="ghd-card" data-stage="${st.key}">${head}</div>`+(col?"":items.map(cardHTML).join(""));
     }
     tb.innerHTML=th; cd.innerHTML=ch;
@@ -647,7 +724,7 @@ function render(){const list=listNow();const tb=document.getElementById("rows"),
 let pickIdx=null;
 const isMobile=()=>window.matchMedia("(max-width:820px)").matches;
 function openPicker(e,i){e.stopPropagation();pickIdx=i;isMobile()?openSheet():openMenu(e);}
-function optList(cur,cb){return STATUS.filter(s=>s.key!=="").map(o=>`<div class="${cb}${o.key===cur?' cur':''}" role="menuitem" tabindex="0" data-key="${esc(o.key)}"><span class="sd" style="background:${statusDotVar(o.key)}"></span>${esc(statusLabel(o.key))}</div>`).join("");}
+function optList(cur,cb){return STATUS.filter(s=>s.key!=="").map(o=>`<div class="${cb}${o.key===cur?' cur':''}" role="menuitem" tabindex="0" data-key="${esc(o.key)}"><span class="sd" style="background:${statusDot(o.key)}"></span>${esc(statusLabel(o.key))}</div>`).join("");}
 function openMenu(e){const cur=sMeta(JOBS[pickIdx].status).key;const m=document.getElementById("menu");m.innerHTML=optList(cur,"mi");const r=e.currentTarget.getBoundingClientRect();m.style.top=(r.bottom+6)+"px";m.style.left=Math.min(r.left,window.innerWidth-192)+"px";m.classList.add("open");}
 function closeMenu(){document.getElementById("menu").classList.remove("open");}
 function openSheet(){const j=JOBS[pickIdx];document.getElementById("sheetHead").textContent=(j.order||jobTitle(j))+" · change status";document.getElementById("sheetBody").innerHTML=optList(sMeta(j.status).key,"si");document.getElementById("scrim").classList.add("open");document.getElementById("sheet").classList.add("open");}
@@ -669,17 +746,32 @@ let tT;function toast(m,err){const t=document.getElementById("toast");document.g
 const THEMES=["light","dark"];
 function curTheme(){return document.documentElement.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");}
 function applyThemeIcon(){const t=curTheme();document.getElementById("themeIcon").textContent=t==="dark"?"☾":"☀";document.getElementById("theme").title="Theme: "+t+" (tap to switch)";}
-function toggleTheme(){const next=THEMES[(THEMES.indexOf(curTheme())+1)%THEMES.length];document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("cobra-theme",next);}catch(e){}applyThemeIcon();}
+function toggleTheme(){const next=THEMES[(THEMES.indexOf(curTheme())+1)%THEMES.length];document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("cobra-theme",next);}catch(e){}applyThemeIcon();if(typeof JOBS!=="undefined"&&JOBS.length)render();}
 (function(){var t="dark";try{t=localStorage.getItem("cobra-theme")||"dark";}catch(e){}if(THEMES.indexOf(t)===-1)t="dark";document.documentElement.setAttribute("data-theme",t);})();
 applyThemeIcon();
 updateGroupBtn();
 
+/* ===== workbook switcher ===== */
+function initWorkbookUI(){
+  const sel=document.getElementById("wbSel");
+  if(sel)sel.innerHTML=WORKBOOKS.map(w=>`<option value="${w.id}"${w.id===WB.id?' selected':''}>${esc(w.name)}</option>`).join("");
+  const nm=document.getElementById("wbName"); if(nm)nm.textContent=WB.name;
+  const mk=document.getElementById("wbMark"); if(mk)mk.textContent=(WB.name||"C").charAt(0).toUpperCase();
+  const fw=document.getElementById("footwb"); if(fw)fw.textContent=WB.name+" · mirrors the live Google Sheet";
+}
+function setWorkbook(id){ if(!id||id===WB.id)return; WB=wbById(id); try{localStorage.setItem("cobra-wb",id);}catch(e){}
+  rebuildStatus(); rebuildFields();
+  FILTER="all"; SELECTED=null; EDIT=null; UNDO=[]; REDO=[]; updateUndoBtns();
+  DM.cache={}; closeDM();
+  JOBS=[]; initWorkbookUI(); buildTable(); render(); load(); }
+initWorkbookUI();
+
 document.getElementById("search").addEventListener("keyup",e=>{if(e.key==="Escape"){e.target.value="";render();}});
 
 /* ===== artwork folder (file picker v1: opens your Drive folder) ===== */
-const ARTWORK_FOLDER_ID="1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";
+function artworkFolderId(){return WB.artworkFolderId||"";}
 function openFolder(folderId,title){
-  folderId=folderId||ARTWORK_FOLDER_ID;
+  folderId=folderId||artworkFolderId();
   document.getElementById("fm-title").textContent=title||"Artwork folder";
   document.getElementById("fm-frame").src="https://drive.google.com/embeddedfolderview?id="+folderId+"#grid";
   document.getElementById("fm-open").href="https://drive.google.com/drive/folders/"+folderId;
@@ -697,7 +789,7 @@ function cycleRowH(){const t=document.querySelector(".card table");const cur=t.g
 /* ===== Drive Manager sidebar (attach a file to Front/Back/Left/Right) ===== */
 let DM={files:[],folders:[],view:[],target:null,mode:'attach',folderId:null,folderName:'',stack:[],parent:'',cache:{}};
 function humanSize(n){n=+n||0;if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(0)+" KB";return (n/1048576).toFixed(1)+" MB";}
-function apiURL(qs){return CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+qs;}
+function apiURL(qs){return CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+qs+"&sheetId="+encodeURIComponent(WB.sheetId);}
 const MOCK_FILES=[
   {name:'KINLEY (RIGHT) - 2.2" W.png',mime:'image/png',size:184000,thumb:'',url:'#'},
   {name:'GRACIE (LEFT) - 1.9" W.png',mime:'image/png',size:172000,thumb:'',url:'#'},
@@ -831,8 +923,11 @@ function attachName(i,key,f){ const cur=(fieldGet(JOBS[i],key).text||"").trim();
   if(cur) return cur; return PLC.includes(key) ? key.toUpperCase() : f.name; }
 
 /* ===== cell selection + inline editing (Order / Details / Thread) + delete-key ===== */
-const FIELD_COL={front:"FRONT",back:"BACK",left:"LEFT",right:"RIGHT",order:"ORDER",details:"DETAILS",thread:"THREAD"};
-const EDITABLE_TEXT=["order","details","thread"];
+// FIELD_COL maps a field key -> the sheet's column header (for setCell); rebuilt per workbook.
+let FIELD_COL={}, EDITABLE_TEXT=[];
+function rebuildFields(){FIELD_COL={};EDITABLE_TEXT=[];WB.columns.forEach(function(c){FIELD_COL[c.key]=c.label.toUpperCase();
+  if(["order","details","thread","swatch","text"].includes(c.type))EDITABLE_TEXT.push(c.key);});}
+rebuildFields();
 function applySelection(){
   document.querySelectorAll("#rows td.sel").forEach(td=>td.classList.remove("sel"));
   if(SELECTED){ const td=document.querySelector(`#rows td[data-i="${SELECTED.i}"][data-f="${SELECTED.f}"]`); if(td)td.classList.add("sel"); }
@@ -887,17 +982,29 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="Escape"){ SELECTED=null; applySelection(); }
 });
 
-/* ===== column resize (drag header edges; widths persist) ===== */
-const COLDEF=[40,182,112,58,290,150,132,132,132,150,150];
-function loadColW(){try{const s=JSON.parse(localStorage.getItem("cobra-colw"));if(Array.isArray(s)&&s.length===COLDEF.length)return s;}catch(e){}return null;}
-function saveColW(w){try{localStorage.setItem("cobra-colw",JSON.stringify(w));}catch(e){}}
-let COLS=null, COLW=loadColW()||COLDEF.slice();
-function initTable(){
-  const table=document.querySelector('.card table');
-  if(!table||table.querySelector('colgroup'))return;
+/* ===== dynamic table head + column resize (per workbook; widths persist) ===== */
+function colDefs(){return [40].concat(WB.columns.map(c=>c.w||120));}
+function colwKey(){return "cobra-colw-"+WB.id;}
+function loadColW(){try{const s=JSON.parse(localStorage.getItem(colwKey()));if(Array.isArray(s)&&s.length===colDefs().length)return s;}catch(e){}return null;}
+function saveColW(w){try{localStorage.setItem(colwKey(),JSON.stringify(w));}catch(e){}}
+let COLS=null, COLW=[];
+function buildHead(){
+  const tr=document.getElementById("headrow"); if(!tr)return;
+  const plc=WB.columns.filter(c=>c.type==="placement");
+  let h=`<th class="rownum-h">#</th>`;
+  WB.columns.forEach(c=>{ let cl=colAlign(c);
+    if(c.type==="placement"){ cl+=" plc-h"; if(c===plc[0])cl+=" plc-h-a"; if(c===plc[plc.length-1])cl+=" plc-h-z"; }
+    h+=`<th class="${cl.trim()}">${esc(c.label)}</th>`; });
+  tr.innerHTML=h;
+}
+function buildTable(){
+  const table=document.querySelector('.card table'); if(!table)return;
+  buildHead();
+  const oldcg=table.querySelector('colgroup'); if(oldcg)oldcg.remove();
+  const CDEF=colDefs(); COLW=loadColW()||CDEF.slice();
   const ths=[...table.querySelectorAll('thead th')];
   const cg=document.createElement('colgroup');
-  ths.forEach((th,i)=>{const c=document.createElement('col');c.style.width=(COLW[i]||COLDEF[i])+'px';cg.appendChild(c);
+  ths.forEach((th,i)=>{const c=document.createElement('col');c.style.width=(COLW[i]||CDEF[i])+'px';cg.appendChild(c);
     if(i<ths.length-1){const h=document.createElement('span');h.className='rz';h.dataset.col=i;th.appendChild(h);}});
   table.insertBefore(cg,table.querySelector('thead'));
   table.style.tableLayout='fixed';table.style.minWidth=COLW.reduce((a,b)=>a+b,0)+'px';
@@ -909,6 +1016,7 @@ function initTable(){
     h.addEventListener('pointerup',()=>{if(rz){saveColW(COLW);rz=null;}});
   });
 }
+const initTable=buildTable;
 
 /* ===== drag-to-reorder rows (unfiltered All view; writes new order to sheet) ===== */
 function canReorder(){return !GROUPED && FILTER==='all' && !document.getElementById('search').value.trim();}
@@ -942,7 +1050,7 @@ function dragUp(){
 }
 async function persistMove(fromRow,toRow){
   try{
-    const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=moveRow&from="+fromRow+"&to="+toRow;
+    const u=apiURL("action=moveRow&from="+fromRow+"&to="+toRow);
     const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0;
     toast('Order saved to sheet');
   }catch(e){toast("Couldn't save order — refreshing",true);load();}
