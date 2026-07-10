@@ -1,14 +1,22 @@
 /**
- * Cobra Digitize — Google Apps Script backend (v3)
+ * Cobra Digitize — Google Apps Script backend (v4 — fast Drive)
  * list / setStatus / moveRow / setCell (any column) / listFiles (recent, recursive)
  * / browse (one folder + subfolders) / deleteFile / upload (POST)
  *
- * RE-DEPLOY: paste all of this, Save, ▶ Run the `authorize` function once
- * (approve Drive), then Deploy → Manage deployments → Edit → New version.
+ * SPEED: Drive reads now use the Drive Advanced Service (batched Drive.Files.list)
+ * instead of per-file DriveApp calls. This is dramatically faster for the sidebar.
+ *
+ * ONE-TIME SETUP before this works:
+ *   1. In the Apps Script editor, click "Services" (＋ next to Services in the left rail).
+ *   2. Find "Drive API", pick version "v2", click Add.
+ *   3. Paste all of this code, Save.
+ *   4. ▶ Run the `authorize` function once (approve Drive access).
+ *   5. Deploy → Manage deployments → Edit → New version.
  */
 var SHEET_ID  = "1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI";
 var FOLDER_ID = "1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";   // artwork folder
 var SHEET_TAB = "";
+var FOLDER_MIME = "application/vnd.google-apps.folder";
 
 function getSheet_() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
@@ -28,11 +36,39 @@ function headerInfo_(sh) {
   return { headerRow: 1, statusCol: 1, timestampCol: 0, cols: {} };
 }
 function json_(o){ return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
-function fileObj_(f){ return { id:f.getId(), name:f.getName(), url:"https://drive.google.com/file/d/"+f.getId()+"/view",
-  thumb:"https://drive.google.com/thumbnail?id="+f.getId()+"&sz=w240", size:f.getSize(), mime:f.getMimeType(), updated:f.getLastUpdated().getTime() }; }
 
-// ▶ RUN THIS ONCE to grant Drive access.
-function authorize(){ Logger.log("OK: " + DriveApp.getFolderById(FOLDER_ID).getName()); }
+// Build a file object from a Drive v2 API resource (fast — no extra round-trips).
+function fileRes_(f){
+  return { id:f.id, name:f.title, url:f.alternateLink||("https://drive.google.com/file/d/"+f.id+"/view"),
+    thumb:"https://drive.google.com/thumbnail?id="+f.id+"&sz=w240",
+    size:f.fileSize?Number(f.fileSize):0, mime:f.mimeType,
+    updated:f.modifiedDate?new Date(f.modifiedDate).getTime():0 };
+}
+function q_(s){ return String(s).replace(/'/g,"\\'"); }
+
+// List direct children of a folder via the Advanced Drive Service (one paged query).
+function listChildren_(folderId, onlyFolders, max){
+  var out=[], token=null, want=max||400;
+  var base = "'"+q_(folderId)+"' in parents and trashed=false";
+  base += onlyFolders ? (" and mimeType='"+FOLDER_MIME+"'") : (" and mimeType!='"+FOLDER_MIME+"'");
+  do{
+    var res=Drive.Files.list({ q:base, maxResults:Math.min(1000,want-out.length),
+      orderBy: onlyFolders?"title":"modifiedDate desc", pageToken:token,
+      fields:"nextPageToken,items(id,title,mimeType,fileSize,modifiedDate,alternateLink)" });
+    (res.items||[]).forEach(function(f){ out.push(f); });
+    token=res.nextPageToken;
+  } while(token && out.length<want);
+  return out;
+}
+// Fast count of files directly in a folder (ids only, capped).
+function countFiles_(folderId, cap){
+  var res=Drive.Files.list({ q:"'"+q_(folderId)+"' in parents and trashed=false and mimeType!='"+FOLDER_MIME+"'",
+    maxResults:cap||500, fields:"items(id)" });
+  return (res.items||[]).length;
+}
+
+// ▶ RUN THIS ONCE to grant Drive access + confirm the Advanced Service is on.
+function authorize(){ Logger.log("OK: " + Drive.Files.get(FOLDER_ID).title); }
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || "list";
@@ -66,28 +102,29 @@ function doGet(e) {
   }
   if (action === "listFiles") {   // recent files across the artwork folder tree (attach picker)
     var q=String(e.parameter.q||"").toLowerCase();
-    var files=[], queue=[DriveApp.getFolderById(e.parameter.folderId||FOLDER_ID)], scanned=0, MAX=800;
-    while(queue.length && scanned<MAX){
-      var fo=queue.shift(), fit=fo.getFiles();
-      while(fit.hasNext() && scanned<MAX){ var f=fit.next(); scanned++;
-        if(q && f.getName().toLowerCase().indexOf(q)===-1) continue; files.push(fileObj_(f)); }
-      var subs=fo.getFolders(); while(subs.hasNext()) queue.push(subs.next());
+    var files=[], queue=[e.parameter.folderId||FOLDER_ID], seen=0, MAXF=12;
+    while(queue.length && files.length<200 && seen<MAXF){
+      var fid0=queue.shift(); seen++;
+      listChildren_(fid0, false, 200).forEach(function(f){
+        if(q && String(f.title).toLowerCase().indexOf(q)===-1) return; files.push(fileRes_(f)); });
+      listChildren_(fid0, true, 200).forEach(function(sf){ queue.push(sf.id); });
     }
     files.sort(function(a,b){return b.updated-a.updated;});
     return json_({ok:true, files:files.slice(0,40)});
   }
   if (action === "browse") {      // one folder: its direct files + subfolders (navigation)
-    var fid=e.parameter.folderId||FOLDER_ID, folder=DriveApp.getFolderById(fid);
-    var files=[], it=folder.getFiles(), n=0; while(it.hasNext()&&n<300){ files.push(fileObj_(it.next())); n++; }
-    files.sort(function(a,b){return b.updated-a.updated;});
-    var folders=[], fs=folder.getFolders(), m=0; while(fs.hasNext()&&m<300){ var sf=fs.next(); var c=0, cit=sf.getFiles(); while(cit.hasNext()&&c<200){cit.next();c++;} folders.push({id:sf.getId(),name:sf.getName(),count:c}); m++; }
+    var fid=e.parameter.folderId||FOLDER_ID;
+    var meta=Drive.Files.get(fid);
+    var files=listChildren_(fid, false, 300).map(fileRes_);
+    var folders=listChildren_(fid, true, 300).map(function(sf){
+      return { id:sf.id, name:sf.title, count:countFiles_(sf.id, 500) }; });
     folders.sort(function(a,b){return a.name.toLowerCase()<b.name.toLowerCase()?-1:1;});
-    var parent=""; var pit=folder.getParents(); if(pit.hasNext()) parent=pit.next().getId();
-    return json_({ok:true, folder:{id:fid,name:folder.getName(),parent:parent}, folders:folders, files:files});
+    var parent=(meta.parents&&meta.parents.length)?meta.parents[0].id:"";
+    return json_({ok:true, folder:{id:fid,name:meta.title,parent:parent}, folders:folders, files:files});
   }
   if (action === "deleteFile") {
     var id=e.parameter.id; if(!id) return json_({ok:false});
-    DriveApp.getFileById(id).setTrashed(true);
+    Drive.Files.update({ labels:{ trashed:true } }, id);
     return json_({ok:true});
   }
 
@@ -113,8 +150,8 @@ function doPost(e) {
   if (p.action === "upload") {
     var fid=p.folderId||FOLDER_ID;
     var blob=Utilities.newBlob(Utilities.base64Decode(p.data), p.mime||"application/octet-stream", p.name||"upload");
-    var file=DriveApp.getFolderById(fid).createFile(blob);
-    return json_({ok:true, file:fileObj_(file)});
+    var meta=Drive.Files.insert({ title:p.name||"upload", parents:[{id:fid}] }, blob);
+    return json_({ok:true, file:fileRes_(meta)});
   }
   return doGet({ parameter: p });
 }

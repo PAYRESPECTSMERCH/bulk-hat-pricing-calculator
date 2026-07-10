@@ -212,7 +212,8 @@
   .dm-list{flex:1;overflow-y:auto;padding:4px 14px 22px;display:flex;flex-direction:column;gap:10px}
   .fcard{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;transition:border-color .15s,background .15s}
   .fcard:hover{border-color:var(--accent);background:var(--accent-weak)}
-  .fcard .thumb{width:58px;height:44px;border-radius:8px;background-color:var(--panel-2);background-size:cover;background-position:center;background-repeat:no-repeat;flex-shrink:0;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px}
+  .fcard .thumb{width:58px;height:44px;border-radius:8px;background-color:var(--panel-2);flex-shrink:0;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;overflow:hidden}
+  .fcard .thumb img{width:100%;height:100%;object-fit:cover;display:block}
   .fcard .fi{min-width:0;flex:1}
   .fcard .fn{font-size:13px;font-weight:650;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .fcard .fm{font-size:11.5px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
@@ -590,7 +591,7 @@ function applyRowH(v){const t=document.querySelector(".card table");if(t)t.setAt
 function cycleRowH(){const t=document.querySelector(".card table");const cur=t.getAttribute("data-rh")||"normal";const nx=RH[(RH.indexOf(cur)+1)%RH.length];applyRowH(nx);try{localStorage.setItem("cobra-rh",nx);}catch(e){}toast("Row height: "+nx);}
 
 /* ===== Drive Manager sidebar (attach a file to Front/Back/Left/Right) ===== */
-let DM={files:[],folders:[],view:[],target:null,mode:'attach',folderId:null,folderName:'',stack:[],parent:''};
+let DM={files:[],folders:[],view:[],target:null,mode:'attach',folderId:null,folderName:'',stack:[],parent:'',cache:{}};
 function humanSize(n){n=+n||0;if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(0)+" KB";return (n/1048576).toFixed(1)+" MB";}
 function apiURL(qs){return CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+qs;}
 const MOCK_FILES=[
@@ -625,7 +626,7 @@ function enterFolder(id,name){ DM.stack.push({id:DM.folderId,name:DM.folderName}
 function navBack(){ if(!DM.stack.length)return; const p=DM.stack.pop(); DM.folderId=p.id; DM.folderName=p.name; loadBrowse(); }
 function closeDM(){document.getElementById("dm").classList.remove("open");document.getElementById("dmscrim").classList.remove("open");document.getElementById("dm").classList.remove("browse");document.body.classList.remove("dm-open");DM.target=null;}
 function dmFilter(){ DM.mode==='browse'?dmRenderBrowse():dmRender(); }
-function dmRefresh(){ DM.mode==='browse'?loadBrowse():dmReload(); }
+function dmRefresh(){ if(DM.mode==='browse'){ if(DM.folderId)delete DM.cache[DM.folderId]; loadBrowse(true); } else dmReload(); }
 
 async function dmReload(){
   const list=document.getElementById("dmList"); list.innerHTML='<div class="dm-empty">Loading files…</div>';
@@ -639,15 +640,24 @@ async function dmReload(){
   } else { DM.files=MOCK_FILES; }
   dmRender();
 }
-async function loadBrowse(){
-  const list=document.getElementById("dmList"); list.innerHTML='<div class="dm-empty">Loading folder…</div>';
+async function loadBrowse(force){
+  const list=document.getElementById("dmList");
   document.getElementById("dmTitle").textContent=DM.folderName||"Folder";
   if(CAN_WRITE && CONFIG.APPS_SCRIPT_URL && DM.folderId){
+    const fid=DM.folderId, cached=DM.cache[fid];
+    // Instant paint from cache, then refresh in the background.
+    if(cached && !force){ DM.files=cached.files||[]; DM.folders=cached.folders||[]; DM.parent=cached.parent||""; if(cached.name){DM.folderName=cached.name;document.getElementById("dmTitle").textContent=cached.name;} dmRenderBrowse(); }
+    else { list.innerHTML='<div class="dm-empty">Loading folder…</div>'; }
     try{
-      const r=await fetch(apiURL("action=browse&folderId="+encodeURIComponent(DM.folderId)),{cache:"no-store"}); const d=await r.json();
-      if(d && (d.files||d.folders)){ DM.files=d.files||[]; DM.folders=d.folders||[]; DM.parent=(d.folder&&d.folder.parent)||""; if(d.folder&&d.folder.name){DM.folderName=d.folder.name;document.getElementById("dmTitle").textContent=DM.folderName;} }
-      else { list.innerHTML='<div class="dm-empty">Couldn\'t open this folder.</div>'; DM.files=[];DM.folders=[]; return; }
-    }catch(e){ list.innerHTML='<div class="dm-empty">Couldn\'t open this folder.</div>'; DM.files=[];DM.folders=[]; return; }
+      const r=await fetch(apiURL("action=browse&folderId="+encodeURIComponent(fid)),{cache:"no-store"}); const d=await r.json();
+      if(fid!==DM.folderId) return;               // user navigated away before this resolved
+      if(d && (d.files||d.folders)){
+        DM.files=d.files||[]; DM.folders=d.folders||[]; DM.parent=(d.folder&&d.folder.parent)||"";
+        if(d.folder&&d.folder.name){DM.folderName=d.folder.name;document.getElementById("dmTitle").textContent=DM.folderName;}
+        DM.cache[fid]={files:DM.files,folders:DM.folders,parent:DM.parent,name:DM.folderName};
+      }
+      else if(!cached){ list.innerHTML='<div class="dm-empty">Couldn\'t open this folder.</div>'; DM.files=[];DM.folders=[]; return; }
+    }catch(e){ if(!cached){ list.innerHTML='<div class="dm-empty">Couldn\'t open this folder.</div>'; DM.files=[];DM.folders=[]; return; } }
   } else if(!DM.folderId && CAN_WRITE){
     list.innerHTML='<div class="dm-empty">This order has no linked Drive folder yet. Link the folder in the sheet and it\'ll open here.</div>'; DM.files=[];DM.folders=[]; document.getElementById("dmCount").textContent="0"; return;
   } else { DM.files=MOCK_FILES.slice(0,4); DM.folders=MOCK_FOLDERS; }  // preview/demo
@@ -656,11 +666,11 @@ async function loadBrowse(){
 function fileCardHTML(f,i,attach){
   const ext=(f.mime||"").split("/").pop().toUpperCase()||"FILE";
   const sz=f.sizeh||(f.size?humanSize(f.size):"");
-  const th=f.thumb?`background-image:url('${esc(f.thumb)}')`:"";
   const dl=f.id?`https://drive.google.com/uc?export=download&id=${esc(f.id)}`:(f.url||"#");
   const act=attach?`onclick="attachFile(${i})"`:`onclick="window.open('${esc(f.url||dl)}','_blank','noopener')"`;
   const right=attach?`<div class="dots">⋯</div>`:`<a class="dl" href="${dl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Download">⬇</a>`;
-  return `<div class="fcard" ${act}><div class="thumb" style="${th}">${f.thumb?"":"🖼"}</div><div class="fi"><div class="fn">${esc(f.name)}</div><div class="fm">${esc(ext)}${sz?" · "+esc(sz):""}</div></div>${right}</div>`;
+  const thumb=f.thumb?`<div class="thumb"><img loading="lazy" decoding="async" src="${esc(f.thumb)}" alt="" onerror="this.parentNode.textContent='🖼'"></div>`:`<div class="thumb">🖼</div>`;
+  return `<div class="fcard" ${act}>${thumb}<div class="fi"><div class="fn">${esc(f.name)}</div><div class="fm">${esc(ext)}${sz?" · "+esc(sz):""}</div></div>${right}</div>`;
 }
 function dmRender(){
   const q=(document.getElementById("dmSearch").value||"").toLowerCase().trim();
@@ -695,7 +705,7 @@ async function doUpload(fileList){
       await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"upload",folderId:DM.folderId,name:file.name,mime:file.type||"application/octet-stream",data:data})});
     }catch(e){ toast("Upload failed: "+file.name,true); }
   }
-  toast("Uploaded ✓"); loadBrowse();
+  toast("Uploaded ✓"); if(DM.folderId)delete DM.cache[DM.folderId]; loadBrowse(true);
 }
 function attachFile(vi){
   const f=DM.view[vi]; if(!f||!DM.target)return;

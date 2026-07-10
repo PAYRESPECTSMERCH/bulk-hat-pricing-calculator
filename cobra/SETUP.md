@@ -18,15 +18,18 @@ and it writes back to the sheet. Works even though the sheet is private.
 3. Delete the starter code, paste the entire contents of
    [`AppsScript.gs`](./AppsScript.gs), and **Save**.
    - If your jobs aren't on the first tab, set `SHEET_TAB` at the top.
-4. **Deploy → New deployment → Web app**
+4. **Turn on the fast Drive service (one time):** in the Apps Script editor,
+   click **Services** (the ＋ in the left rail) → find **Drive API**, choose
+   version **v2**, click **Add**. This makes the sidebar load much faster.
+5. **Deploy → New deployment → Web app**
    - **Execute as:** Me
    - **Who has access:** Anyone
    - **Deploy**, authorize when prompted, then **copy the `/exec` URL**.
-5. In [`index.html`](./index.html), set:
+6. In [`index.html`](./index.html), set:
    ```js
    APPS_SCRIPT_URL: "https://script.google.com/macros/s/XXXXX/exec",
    ```
-6. Reload the app. The header should read **"Live · two-way sync."**
+7. Reload the app. The header should read **"Live · two-way sync."**
 
 > Re-deploying after code edits: use **Deploy → Manage deployments → Edit →
 > New version** so the URL stays the same.
