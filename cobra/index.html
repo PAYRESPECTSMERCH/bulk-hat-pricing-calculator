@@ -96,6 +96,9 @@
   .iconbtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;width:40px;height:40px;
     font-size:17px;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;transition:transform .1s}
   .iconbtn:active{transform:scale(.93)}
+  .iconbtn:disabled{opacity:.32;cursor:default}
+  .iconbtn:disabled:active{transform:none}
+  .folderrow .cnt2{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}
   .iconbtn.spin svg,.iconbtn.spin span{animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -166,14 +169,18 @@
   .fm-open{font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:600;white-space:nowrap}
   .fm-head button{background:var(--panel-2);border:none;border-radius:9px;width:32px;height:32px;font-size:15px;cursor:pointer;color:var(--ink)}
   .fm-frame{flex:1;border:0;width:100%;background:var(--panel-2)}
-  /* placement cell link + attach affordances */
+  /* placement cell: stacked + centered (name over size) */
+  .plcbox{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;line-height:1.3}
+  .plcbox .pnm{font-weight:600;font-size:12.5px}
+  .plcbox .psz{color:color-mix(in srgb,var(--muted) 78%,transparent);font-size:12px;font-variant-numeric:tabular-nums}
+  .plcbox .pacts{display:flex;gap:2px;align-items:center;margin-top:1px}
   .plc .flink{color:var(--accent);text-decoration:none;font-weight:600}
   .plc .flink:hover{text-decoration:underline}
-  .plc .attach{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:var(--panel-2);color:var(--muted);font-size:12px;cursor:pointer;margin-left:6px;vertical-align:middle}
+  .plc .attach{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:var(--panel-2);color:var(--muted);font-size:12px;cursor:pointer;vertical-align:middle}
   .plc .attach:hover{background:var(--accent-weak)}
-  .plc .addf{color:var(--muted);cursor:pointer;font-weight:600;font-size:12.5px}
+  .plc .addf{color:color-mix(in srgb,var(--muted) 60%,transparent);cursor:pointer;font-weight:500;font-size:12.5px}
   .plc .addf:hover{color:var(--accent)}
-  .plc .rmv{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;color:var(--muted);font-size:11px;cursor:pointer;margin-left:3px}
+  .plc .rmv{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;color:var(--muted);font-size:11px;cursor:pointer}
   .plc .rmv:hover{background:#fde3e9;color:#e11d48}
   /* editable cells */
   td.cell{cursor:default}
@@ -331,6 +338,8 @@
     <div class="mark">C</div>
     <div class="brand"><div class="n">Cobra Digitize</div><div class="s">Apparel Hotline</div></div>
     <div class="barspace"></div>
+    <button class="iconbtn" id="undoBtn" title="Undo (⌘Z / Ctrl+Z)" aria-label="Undo" onclick="undo()" disabled><span>↶</span></button>
+    <button class="iconbtn" id="redoBtn" title="Redo (⌘⇧Z / Ctrl+Y)" aria-label="Redo" onclick="redo()" disabled><span>↷</span></button>
     <button class="iconbtn" id="rowh" title="Row height (compact / normal / tall)" aria-label="Change row height" onclick="cycleRowH()"><span>⇕</span></button>
     <button class="iconbtn" id="theme" title="Toggle theme" aria-label="Toggle light or dark theme" onclick="toggleTheme()"><span id="themeIcon">◐</span></button>
     <button class="iconbtn" id="refresh" title="Refresh from sheet" aria-label="Refresh from sheet" onclick="load()"><span>⟳</span></button>
@@ -497,7 +506,7 @@ function plcCell(c){const p=parsePlc(c);if(!p)return'<span class="none">—</spa
 function plcCellFull(j,i,key){const p=parsePlc(j[key]);const url=j[key+"Url"];
   if(!p) return `<span class="addf" onclick="event.stopPropagation();openDM(${i},'${key}')" title="Attach a file">＋ Add</span>`;
   const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(p.name)}</a>`:`<span class="nm">${esc(p.name)}</span>`;
-  return `<span class="chip">${nm}${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span><span class="attach" onclick="event.stopPropagation();openDM(${i},'${key}')" title="Attach / replace file">📎</span><span class="rmv" onclick="event.stopPropagation();removeFile(${i},'${key}')" title="Remove file">✕</span>`;}
+  return `<div class="plcbox"><div class="pnm">${nm}</div>${p.size?`<div class="psz">${esc(p.size)}</div>`:""}<div class="pacts"><span class="attach" onclick="event.stopPropagation();openDM(${i},'${key}')" title="Attach / replace file">📎</span><span class="rmv" onclick="event.stopPropagation();removeFile(${i},'${key}')" title="Remove file">✕</span></div></div>`;}
 function orderCell(j,i){ if(EDIT&&EDIT.i===i&&EDIT.f==='order') return editBox(j.order,false);
   const num=esc(j.order)||'<span class="none">—</span>';
   return j.orderUrl?`<a class="olink" href="${esc(j.orderUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${num}</a>`:`<span class="order">${num}</span>`; }
@@ -546,12 +555,9 @@ document.getElementById("chips").addEventListener("click",e=>{const b=e.target.c
 document.getElementById("menu").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
 document.getElementById("sheetBody").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
 
-async function pick(key){if(pickIdx==null)return;const j=JOBS[pickIdx];const prev=j.status;closeMenu();closeSheet();
-  if(sMeta(prev).key===key)return;
-  j.status=key;buildChips();render();
-  if(!CAN_WRITE||!j._row){toast("Preview only — connect the sheet to save",true);return;}
-  try{const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=setStatus&row="+encodeURIComponent(j._row)+"&status="+encodeURIComponent(key);const res=await fetch(u,{cache:"no-store"});if(!res.ok||(await res.json()).ok===false)throw 0;toast("Saved to sheet");updateSync();}
-  catch(e){j.status=prev;buildChips();render();toast("Couldn't save — try again",true);}}
+function pick(key){if(pickIdx==null)return;const i=pickIdx;closeMenu();closeSheet();
+  if(sMeta(JOBS[i].status).key===key)return;
+  applyField(i,"status",{text:key,url:""},true);}
 
 let tT;function toast(m,err){const t=document.getElementById("toast");document.getElementById("toastMsg").textContent=m;t.className="toast show"+(err?" err":"");clearTimeout(tT);tT=setTimeout(()=>t.className="toast"+(err?" err":""),2300);}
 
@@ -596,7 +602,7 @@ const MOCK_FILES=[
   {name:"IF THE LIGHT IS OFF (RIGHT) - 5\" W.png",mime:'image/png',size:198000,thumb:'',url:'#'},
   {name:'LUCK OR SOMETHING - 5" W.png',mime:'image/png',size:221000,thumb:'',url:'#'}
 ];
-const MOCK_FOLDERS=[{id:'sub1',name:'PROOFS'},{id:'sub2',name:'FINAL STITCH FILES'},{id:'sub3',name:'ORIGINAL ART'}];
+const MOCK_FOLDERS=[{id:'sub1',name:'FRONT',count:4},{id:'sub2',name:'BACK',count:2},{id:'sub3',name:'LEFT',count:1},{id:'sub4',name:'RIGHT',count:0}];
 function dmShow(){document.getElementById("dmscrim").classList.add("open");document.getElementById("dm").classList.add("open");document.body.classList.add("dm-open");}
 function dmSetUpload(on){document.getElementById("dmUp").classList.toggle("on",!!on);}
 function openDM(i,key){
@@ -663,15 +669,19 @@ function dmRender(){
   const list=document.getElementById("dmList");
   list.innerHTML=files.length?files.map((f,i)=>fileCardHTML(f,i,true)).join(""):'<div class="dm-empty">No files found.</div>';
 }
+const FOLDER_ORDER=["FRONT","BACK","LEFT","RIGHT"];
+function folderRank(n){const i=FOLDER_ORDER.indexOf(String(n||"").trim().toUpperCase());return i===-1?99:i;}
 function dmRenderBrowse(){
   const q=(document.getElementById("dmSearch").value||"").toLowerCase().trim();
-  const folders=DM.folders.filter(f=>!q||(f.name||"").toLowerCase().includes(q));
+  const folders=DM.folders.filter(f=>!q||(f.name||"").toLowerCase().includes(q))
+    .slice().sort((a,b)=>{const ra=folderRank(a.name),rb=folderRank(b.name);return ra!==rb?ra-rb:(String(a.name).toLowerCase()<String(b.name).toLowerCase()?-1:1);});
   const files=DM.files.filter(f=>!q||(f.name||"").toLowerCase().includes(q)); DM.view=files;
   document.getElementById("dmCount").textContent=(DM.folders.length+DM.files.length);
   const tg=document.getElementById("dmTarget"); tg.classList.add("on");
   tg.innerHTML=(DM.stack.length?`<span class="back" onclick="navBack()">‹ Back</span> · `:"")+"📁 "+esc(DM.folderName||"Folder");
   const list=document.getElementById("dmList");
-  let html=folders.map(fo=>`<div class="folderrow" onclick="enterFolder('${jss(fo.id)}','${jss(fo.name)}')"><span class="thumb">📁</span><span class="fi2">${esc(fo.name)}</span><span class="dots">›</span></div>`).join("");
+  let html=folders.map(fo=>{const cnt=(fo.count!=null)?`<span class="cnt2">${fo.count} file${fo.count===1?'':'s'} in folder</span>`:"";
+    return `<div class="folderrow" onclick="enterFolder('${jss(fo.id)}','${jss(fo.name)}')"><span class="thumb">📁</span><span class="fi2">${esc(fo.name)}${cnt}</span><span class="dots">›</span></div>`;}).join("");
   html+=files.map((f,i)=>fileCardHTML(f,i,false)).join("");
   list.innerHTML=html||'<div class="dm-empty">This folder is empty.</div>';
 }
@@ -687,19 +697,11 @@ async function doUpload(fileList){
   }
   toast("Uploaded ✓"); loadBrowse();
 }
-async function attachFile(vi){
+function attachFile(vi){
   const f=DM.view[vi]; if(!f||!DM.target)return;
-  const {i,key}=DM.target; const j=JOBS[i];
-  j[key]=f.name; j[key+"Url"]=f.url||""; render();
-  closeDM();
+  const {i,key}=DM.target; closeDM();
+  applyField(i,key,{text:f.name,url:f.url||""},true);
   toast("Linked "+key.toUpperCase()+" → "+f.name);
-  if(CAN_WRITE && j._row && f.url){
-    try{
-      const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=setCell&row="+j._row+"&col="+encodeURIComponent(key)+"&text="+encodeURIComponent(f.name)+"&url="+encodeURIComponent(f.url);
-      const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0;
-      toast("Saved to sheet");
-    }catch(e){ toast("Couldn't save link — refreshing",true); load(); }
-  } else if(!CAN_WRITE){ toast("Preview only — connect the sheet to save",true); }
 }
 
 /* ===== cell selection + inline editing (Order / Details / Thread) + delete-key ===== */
@@ -712,18 +714,35 @@ function applySelection(){
 function selectCell(i,f){ SELECTED={i:+i,f}; applySelection(); }
 function startEdit(i,f){ if(!EDITABLE_TEXT.includes(f))return; EDIT={i:+i,f}; SELECTED={i:+i,f}; render(); }
 function cancelEdit(){ EDIT=null; render(); }
-function commitEdit(val){ if(!EDIT)return; const {i,f}=EDIT; const j=JOBS[i]; const url=(f==="order")?(j.orderUrl||""):""; j[f]=val; EDIT=null; render(); saveField(i,f,val,url); }
-function clearSelected(){ if(!SELECTED)return; const {i,f}=SELECTED; const j=JOBS[i];
-  if(["front","back","left","right"].includes(f)){ j[f]=""; j[f+"Url"]=""; } else { j[f]=""; if(f==="order") j.orderUrl=""; }
-  render(); saveField(i,f,"",""); }
-async function saveField(i,f,text,url){
-  const j=JOBS[i]; const col=FIELD_COL[f]; if(!col)return;
-  if(!CAN_WRITE||!j._row){ toast("Preview only — connect the sheet to save",true); return; }
-  try{ const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=setCell&row="+j._row+"&col="+col+"&text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url||"");
-    const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0; toast("Saved");
-  }catch(e){ toast("Couldn't save — refreshing",true); load(); }
-}
-function removeFile(i,key){ const j=JOBS[i]; j[key]=""; j[key+"Url"]=""; if(SELECTED&&SELECTED.i===i&&SELECTED.f===key){} render(); saveField(i,key,"",""); }
+const PLC=["front","back","left","right"];
+function fieldGet(j,f){ if(f==="status")return{text:j.status||"",url:""}; if(f==="order")return{text:j.order||"",url:j.orderUrl||""}; if(PLC.includes(f))return{text:j[f]||"",url:j[f+"Url"]||""}; return{text:j[f]||"",url:""}; }
+function fieldSet(j,f,text,url){ if(f==="status"){j.status=text;return;} j[f]=text; if(f==="order")j.orderUrl=url||""; if(PLC.includes(f))j[f+"Url"]=url||""; }
+async function syncField(i,f,text,url){ const j=JOBS[i]; if(!CAN_WRITE||!j._row){ toast("Preview only — connect the sheet to save",true); return; }
+  try{ let u; if(f==="status"){ u=apiURL("action=setStatus&row="+j._row+"&status="+encodeURIComponent(text)); } else { u=apiURL("action=setCell&row="+j._row+"&col="+FIELD_COL[f]+"&text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url||"")); }
+    const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0; if(f==="status")updateSync();
+  }catch(e){ toast("Couldn't save — refreshing",true); load(); } }
+function applyField(i,f,val,record){ const j=JOBS[i]; const before=fieldGet(j,f); if(before.text===val.text&&(before.url||"")===(val.url||""))return;
+  fieldSet(j,f,val.text,val.url); if(f==="status")buildChips(); render(); syncField(i,f,val.text,val.url);
+  if(record){ UNDO.push({kind:"field",i,f,before,after:{text:val.text,url:val.url||""}}); if(UNDO.length>200)UNDO.shift(); REDO=[]; updateUndoBtns(); } }
+function commitEdit(val){ if(!EDIT)return; const {i,f}=EDIT; const url=(f==="order")?(JOBS[i].orderUrl||""):""; EDIT=null; applyField(i,f,{text:val,url},true); }
+function clearSelected(){ if(!SELECTED)return; const {i,f}=SELECTED; applyField(i,f,{text:"",url:""},true); }
+function removeFile(i,key){ applyField(i,key,{text:"",url:""},true); }
+
+/* ===== undo / redo ===== */
+let UNDO=[], REDO=[];
+function updateUndoBtns(){ const u=document.getElementById("undoBtn"),r=document.getElementById("redoBtn"); if(u)u.disabled=!UNDO.length; if(r)r.disabled=!REDO.length; }
+function doReorder(fromIdx,toIdx,record){ if(fromIdx===toIdx)return; const ref=JOBS[fromIdx],fromRow=ref._row;
+  JOBS.splice(fromIdx,1); JOBS.splice(toIdx,0,ref); JOBS.forEach((j,k)=>{j._row=k+2;}); render();
+  if(CAN_WRITE)persistMove(fromRow,toIdx+2); else toast("Reordered (preview — connect the sheet to save)");
+  if(record){ UNDO.push({kind:"reorder",ref,before:fromIdx,after:toIdx}); if(UNDO.length>200)UNDO.shift(); REDO=[]; updateUndoBtns(); } }
+function undo(){ const cmd=UNDO.pop(); if(!cmd)return;
+  if(cmd.kind==="field"){ const j=JOBS[cmd.i]; fieldSet(j,cmd.f,cmd.before.text,cmd.before.url); if(cmd.f==="status")buildChips(); render(); syncField(cmd.i,cmd.f,cmd.before.text,cmd.before.url); }
+  else if(cmd.kind==="reorder"){ const cur=JOBS.indexOf(cmd.ref); if(cur>=0)doReorder(cur,cmd.before,false); }
+  REDO.push(cmd); updateUndoBtns(); toast("Undo"); }
+function redo(){ const cmd=REDO.pop(); if(!cmd)return;
+  if(cmd.kind==="field"){ const j=JOBS[cmd.i]; fieldSet(j,cmd.f,cmd.after.text,cmd.after.url); if(cmd.f==="status")buildChips(); render(); syncField(cmd.i,cmd.f,cmd.after.text,cmd.after.url); }
+  else if(cmd.kind==="reorder"){ const cur=JOBS.indexOf(cmd.ref); if(cur>=0)doReorder(cur,cmd.after,false); }
+  UNDO.push(cmd); updateUndoBtns(); toast("Redo"); }
 (function(){
   const body=document.getElementById("rows");
   body.addEventListener("click",e=>{ if(EDIT)return; if(e.target.closest("a,.attach,.addf,.rmv,.pill,.grip")) return; const td=e.target.closest("td.cell"); if(!td){SELECTED=null;applySelection();return;} selectCell(td.dataset.i,td.dataset.f); });
@@ -731,6 +750,9 @@ function removeFile(i,key){ const j=JOBS[i]; j[key]=""; j[key+"Url"]=""; if(SELE
 })();
 document.addEventListener("keydown",e=>{
   if(EDIT)return; const tag=(e.target.tagName||"").toLowerCase(); if(tag==="input"||tag==="textarea")return;
+  const mod=e.metaKey||e.ctrlKey;
+  if(mod && (e.key==="z"||e.key==="Z")){ e.preventDefault(); if(e.shiftKey)redo(); else undo(); return; }
+  if(mod && (e.key==="y"||e.key==="Y")){ e.preventDefault(); redo(); return; }
   if(!SELECTED)return;
   if(e.key==="Delete"||e.key==="Backspace"){ e.preventDefault(); clearSelected(); }
   else if(e.key==="Enter"){ if(EDITABLE_TEXT.includes(SELECTED.f)){ e.preventDefault(); startEdit(SELECTED.i,SELECTED.f); } }
@@ -787,14 +809,8 @@ function dragUp(){
   const from=drag.from, to=(drag.to==null?from:drag.to);
   clearDrop(); if(drag.tr)drag.tr.classList.remove('dragging'); drag=null;
   if(to===from||to===from+1)return;
-  const fromRow=JOBS[from]._row;
-  const it=JOBS.splice(from,1)[0];
   const ins=to>from?to-1:to;
-  JOBS.splice(ins,0,it);
-  JOBS.forEach((j,k)=>{j._row=k+2;});
-  render();
-  if(CAN_WRITE)persistMove(fromRow,ins+2);
-  else toast('Reordered (preview — connect the sheet to save)');
+  doReorder(from,ins,true);
 }
 async function persistMove(fromRow,toRow){
   try{
