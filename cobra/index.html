@@ -159,6 +159,41 @@
   .fm-open{font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:600;white-space:nowrap}
   .fm-head button{background:var(--panel-2);border:none;border-radius:9px;width:32px;height:32px;font-size:15px;cursor:pointer;color:var(--ink)}
   .fm-frame{flex:1;border:0;width:100%;background:var(--panel-2)}
+  /* placement cell link + attach affordances */
+  .plc .flink{color:var(--accent);text-decoration:none;font-weight:600}
+  .plc .flink:hover{text-decoration:underline}
+  .plc .attach{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:var(--panel-2);color:var(--muted);font-size:12px;cursor:pointer;margin-left:6px;vertical-align:middle}
+  .plc .attach:hover{background:var(--accent-weak)}
+  .plc .addf{color:var(--muted);cursor:pointer;font-weight:600;font-size:12.5px}
+  .plc .addf:hover{color:var(--accent)}
+  .jc .pr .attach{margin-left:auto}
+  /* Drive Manager sidebar */
+  .dmscrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:97;opacity:0;pointer-events:none;transition:opacity .2s}
+  .dmscrim.open{opacity:1;pointer-events:auto}
+  .dm{position:fixed;top:0;right:0;height:100%;width:390px;max-width:94vw;background:var(--panel);z-index:98;
+    box-shadow:-14px 0 44px rgba(0,0,0,.3);transform:translateX(103%);transition:transform .26s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column}
+  .dm.open{transform:translateX(0)}
+  .dm-h{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 12px}
+  .dm-h .t{font-size:18px;font-weight:750;letter-spacing:-.3px}
+  .dm-h button{background:var(--panel-2);border:none;border-radius:9px;width:32px;height:32px;font-size:15px;cursor:pointer;color:var(--ink)}
+  .dm-sub{display:flex;gap:9px;padding:0 18px}
+  .dm-search{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13.5px;color:var(--ink)}
+  .dm-filter{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:0 13px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+  .dm-target{margin:12px 18px 2px;font-size:12px;color:var(--accent);background:var(--accent-weak);border-radius:9px;padding:9px 12px;font-weight:600;display:none}
+  .dm-target.on{display:block}
+  .dm-meta{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 8px}
+  .dm-meta .rf{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+  .dm-meta .rf b{color:var(--ink)}
+  .dm-refresh{color:var(--accent);font-weight:600;font-size:13px;background:none;border:none;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+  .dm-list{flex:1;overflow-y:auto;padding:4px 14px 22px;display:flex;flex-direction:column;gap:10px}
+  .fcard{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;transition:border-color .15s,background .15s}
+  .fcard:hover{border-color:var(--accent);background:var(--accent-weak)}
+  .fcard .thumb{width:58px;height:44px;border-radius:8px;background-color:var(--panel-2);background-size:cover;background-position:center;background-repeat:no-repeat;flex-shrink:0;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px}
+  .fcard .fi{min-width:0;flex:1}
+  .fcard .fn{font-size:13px;font-weight:650;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .fcard .fm{font-size:11.5px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
+  .fcard .dots{color:var(--muted);font-size:18px;align-self:flex-start;padding:0 2px}
+  .dm-empty{color:var(--muted);text-align:center;padding:44px 14px;font-size:13.5px;line-height:1.5}
   .order{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .puff{font-size:10px;font-weight:800;color:#fff;background:#d93a34;border-radius:6px;padding:3px 6px;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 2px rgba(217,58,52,.35)}
   .details{max-width:320px;line-height:1.45;color:var(--ink)}
@@ -402,12 +437,12 @@ const DATA=[
 ["CUSTOMER APPROVED","4820015521","","FRONT: FROM MAPLE GROVE WITH LOVE - 5\" W — QTY 100","FROM MAPLE GROVE WITH LOVE - 5\" W","","","","THREAD BLACK","4820015521"],
 ["","4820015522","","FRONT: TIDEWATER TEES - 3\" W","TIDEWATER TEES (FRONT) - 3\" W","","","","THREAD PURPLE WITH GOLD OUTLINE","4820015522"]
 ];
-function toJob(v,r){return{_row:r||null,status:v[0]||"",order:v[1]||"",puff:v[2]||"",details:v[3]||"",front:v[4]||"",back:v[5]||"",left:v[6]||"",right:v[7]||"",thread:v[8]||"",folder:v[9]||""};}
+function toJob(v,r,links){var j={_row:r||null,status:v[0]||"",order:v[1]||"",puff:v[2]||"",details:v[3]||"",front:v[4]||"",back:v[5]||"",left:v[6]||"",right:v[7]||"",thread:v[8]||"",folder:v[9]||""};if(links){j.frontUrl=links.front||"";j.backUrl=links.back||"";j.leftUrl=links.left||"";j.rightUrl=links.right||"";}return j;}
 
 async function load(){
   const btn=document.getElementById("refresh");btn.classList.add("spin");
   let jobs=null;
-  if(CONFIG.APPS_SCRIPT_URL){try{const res=await fetch(CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=list",{cache:"no-store"});if(res.ok){const d=await res.json();const arr=d.rows||d;jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row));IS_LIVE=true;CAN_WRITE=true;}}catch(e){}}
+  if(CONFIG.APPS_SCRIPT_URL){try{const res=await fetch(CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=list",{cache:"no-store"});if(res.ok){const d=await res.json();const arr=d.rows||d;jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row,r.links));IS_LIVE=true;CAN_WRITE=true;}}catch(e){}}
   if(!jobs&&CONFIG.USE_LIVE&&CONFIG.SHEET_ID){const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CONFIG.GID}`;try{const res=await fetch(url,{cache:"no-store"});if(res.ok){const p=parseCSV(await res.text()).filter(r=>r.some(c=>c&&c.trim()));let st=0;for(let i=0;i<Math.min(p.length,3);i++){if(p[i].join("|").toUpperCase().includes("STATUS")){st=i+1;break;}}jobs=p.slice(st).map((r,i)=>toJob(r,st+i+1));IS_LIVE=true;CAN_WRITE=false;}}catch(e){}}
   if(!jobs){jobs=DATA.map((r,i)=>toJob(r,i+2));IS_LIVE=false;CAN_WRITE=false;}
   JOBS=jobs.filter(j=>j.order||j.details);
@@ -429,6 +464,10 @@ function setFilter(k){FILTER=k;buildChips();render();}
 /* ===== render ===== */
 function threadCell(t){const sw=swatches(t).map(c=>`<i style="background:${c}"></i>`).join("");const l=threadLabel(t);if(!l)return'<span class="none">—</span>';return`<div class="thread"><span class="sw">${sw||'<i style="background:var(--line)"></i>'}</span><span class="tlabel">${esc(l)}</span></div>`;}
 function plcCell(c){const p=parsePlc(c);if(!p)return'<span class="none">—</span>';return`<span class="chip"><span class="nm">${esc(p.name)}</span>${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span>`;}
+function plcCellFull(j,i,key){const p=parsePlc(j[key]);const url=j[key+"Url"];
+  if(!p) return `<span class="addf" onclick="openDM(${i},'${key}')" title="Attach a file">＋ Add</span>`;
+  const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:`<span class="nm">${esc(p.name)}</span>`;
+  return `<span class="chip">${nm}${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span><span class="attach" onclick="openDM(${i},'${key}')" title="Attach / replace file">📎</span>`;}
 function folderCell(f){if(!f||!f.trim())return'<span class="none">—</span>';return`<a class="folder" href="javascript:void(0)" onclick="openFolder(null,'Digitize folder · '+${JSON.stringify(esc(f))})">🗂 ${esc(f)}</a>`;}
 function pill(j,i){const m=sMeta(j.status);const st=m.bg?`background:${m.bg};color:${m.fg};border-color:transparent`:`background:transparent;color:var(--muted);border-color:var(--line)`;return `<button class="pill act" style="${st}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
 function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
@@ -437,9 +476,9 @@ function render(){const list=listNow();const tb=document.getElementById("rows"),
   if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else{
     tb.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);const m=sMeta(j.status);const num=/^[#]?\d{6,}$/.test(String(j.order).trim());
-      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc" onclick="openArtwork('Front')" title="Open artwork folder">${plcCell(j.front)}</td><td class="plc" onclick="openArtwork('Back')" title="Open artwork folder">${plcCell(j.back)}</td><td class="plc" onclick="openArtwork('Left')" title="Open artwork folder">${plcCell(j.left)}</td><td class="plc" onclick="openArtwork('Right')" title="Open artwork folder">${plcCell(j.right)}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
+      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc">${plcCellFull(j,i,'front')}</td><td class="plc">${plcCellFull(j,i,'back')}</td><td class="plc">${plcCellFull(j,i,'left')}</td><td class="plc">${plcCellFull(j,i,'right')}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
     cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
-      const pl=[["FRONT","",j.front],["BACK","b",j.back],["LEFT","l",j.left],["RIGHT","r",j.right]].map(([lab,c,v])=>{const p=parsePlc(v);if(!p)return"";return`<div class="pr" onclick="openArtwork('${lab}')" title="Open artwork folder"><span class="ploc ${c}">${lab}</span><span class="pn">${esc(p.name)}</span><span class="ps">${p.size?esc(p.size):"—"}</span></div>`;}).join("");
+      const pl=[["FRONT","front",""],["BACK","back","b"],["LEFT","left","l"],["RIGHT","right","r"]].map(([lab,key,c])=>{const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${JOBS.indexOf(j)},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
       return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
   }
   const dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
@@ -458,7 +497,7 @@ function openSheet(){const j=JOBS[pickIdx];document.getElementById("sheetHead").
 function closeSheet(){document.getElementById("scrim").classList.remove("open");document.getElementById("sheet").classList.remove("open");}
 document.addEventListener("click",e=>{if(!e.target.closest("#menu")&&!e.target.closest(".pill.act"))closeMenu();});
 window.addEventListener("scroll",closeMenu,true);
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeSheet();closeFolder();}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeSheet();closeFolder();closeDM();}});
 document.getElementById("chips").addEventListener("click",e=>{const b=e.target.closest("[data-key]");if(b)setFilter(b.dataset.key);});
 document.getElementById("menu").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
 document.getElementById("sheetBody").addEventListener("click",e=>{const o=e.target.closest("[data-key]");if(o)pick(o.dataset.key);});
@@ -499,6 +538,75 @@ function openArtwork(side){openFolder(null,(side?side+" · ":"")+"Artwork folder
 const RH=["normal","compact","expanded"];
 function applyRowH(v){const t=document.querySelector(".card table");if(t)t.setAttribute("data-rh",v);}
 function cycleRowH(){const t=document.querySelector(".card table");const cur=t.getAttribute("data-rh")||"normal";const nx=RH[(RH.indexOf(cur)+1)%RH.length];applyRowH(nx);try{localStorage.setItem("cobra-rh",nx);}catch(e){}toast("Row height: "+nx);}
+
+/* ===== Drive Manager sidebar (attach a file to Front/Back/Left/Right) ===== */
+let DM={files:[],view:[],target:null};
+function humanSize(n){n=+n||0;if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(0)+" KB";return (n/1048576).toFixed(1)+" MB";}
+const MOCK_FILES=[
+  {name:'KINLEY (RIGHT) - 2.2" W.png',mime:'image/png',size:184000,thumb:'',url:'#'},
+  {name:'GRACIE (LEFT) - 1.9" W.png',mime:'image/png',size:172000,thumb:'',url:'#'},
+  {name:'3D - TREE KE LOGO (FRONT) - 3.4" W.png',mime:'image/png',size:240000,thumb:'',url:'#'},
+  {name:'RDH - 8" W.png',mime:'image/png',size:210000,thumb:'',url:'#'},
+  {name:'3D SPRING LAKE (FRONT) - 5" W.png',mime:'image/png',size:265000,thumb:'',url:'#'},
+  {name:"IF THE LIGHT IS OFF (RIGHT) - 5\" W.png",mime:'image/png',size:198000,thumb:'',url:'#'},
+  {name:'LUCK OR SOMETHING - 5" W.png',mime:'image/png',size:221000,thumb:'',url:'#'}
+];
+function openDM(i,key){
+  const j=JOBS[i]; DM.target={i,key};
+  const tg=document.getElementById("dmTarget");
+  tg.textContent="Attaching to "+key.toUpperCase()+"  ·  "+(j.order||jobTitle(j));
+  tg.classList.add("on");
+  document.getElementById("dmSearch").value="";
+  document.getElementById("dmscrim").classList.add("open");
+  document.getElementById("dm").classList.add("open");
+  dmReload();
+}
+function closeDM(){document.getElementById("dm").classList.remove("open");document.getElementById("dmscrim").classList.remove("open");DM.target=null;}
+async function dmReload(){
+  const list=document.getElementById("dmList"); list.innerHTML='<div class="dm-empty">Loading files…</div>';
+  if(CAN_WRITE && CONFIG.APPS_SCRIPT_URL){
+    try{
+      const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=listFiles";
+      const r=await fetch(u,{cache:"no-store"}); const d=await r.json();
+      if(d && d.files){ DM.files=d.files; }
+      else { list.innerHTML='<div class="dm-empty">Update your Apps Script to enable the file picker (re-deploy the new code), then Refresh.</div>'; DM.files=[]; document.getElementById("dmCount").textContent="0"; return; }
+    }catch(e){ DM.files=[]; }
+  } else {
+    DM.files=MOCK_FILES; // preview/demo
+  }
+  dmRender();
+}
+function dmRender(){
+  const q=(document.getElementById("dmSearch").value||"").toLowerCase().trim();
+  const files=DM.files.filter(f=>!q||(f.name||"").toLowerCase().includes(q));
+  DM.view=files;
+  document.getElementById("dmCount").textContent=DM.files.length;
+  const list=document.getElementById("dmList");
+  if(!files.length){list.innerHTML='<div class="dm-empty">No files found.</div>';return;}
+  list.innerHTML=files.map((f,i)=>{
+    const ext=(f.mime||"").split("/").pop().toUpperCase()||"FILE";
+    const sz=f.sizeh||(f.size?humanSize(f.size):"");
+    const th=f.thumb?`background-image:url('${esc(f.thumb)}')`:"";
+    return `<div class="fcard" onclick="attachFile(${i})">
+      <div class="thumb" style="${th}">${f.thumb?"":"🖼"}</div>
+      <div class="fi"><div class="fn">${esc(f.name)}</div><div class="fm">${esc(ext)}${sz?" · "+esc(sz):""}</div></div>
+      <div class="dots">⋯</div></div>`;
+  }).join("");
+}
+async function attachFile(vi){
+  const f=DM.view[vi]; if(!f||!DM.target)return;
+  const {i,key}=DM.target; const j=JOBS[i];
+  j[key]=f.name; j[key+"Url"]=f.url||""; render();
+  closeDM();
+  toast("Linked "+key.toUpperCase()+" → "+f.name);
+  if(CAN_WRITE && j._row && f.url){
+    try{
+      const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=setCell&row="+j._row+"&col="+encodeURIComponent(key)+"&text="+encodeURIComponent(f.name)+"&url="+encodeURIComponent(f.url);
+      const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0;
+      toast("Saved to sheet");
+    }catch(e){ toast("Couldn't save link — refreshing",true); load(); }
+  } else if(!CAN_WRITE){ toast("Preview only — connect the sheet to save",true); }
+}
 
 /* ===== column resize (drag header edges; widths persist) ===== */
 const COLDEF=[40,182,112,58,290,150,132,132,132,150,150];
@@ -589,5 +697,17 @@ setInterval(function(){
   </div>
   <iframe class="fm-frame" id="fm-frame" src="" title="Folder contents" referrerpolicy="no-referrer"></iframe>
 </div>
+
+<div class="dmscrim" id="dmscrim" onclick="closeDM()"></div>
+<aside class="dm" id="dm" aria-label="Drive Manager" role="dialog" aria-modal="true">
+  <div class="dm-h"><span class="t">Drive Manager</span><button onclick="closeDM()" aria-label="Close">✕</button></div>
+  <div class="dm-sub">
+    <input class="dm-search" id="dmSearch" placeholder="Search files…" oninput="dmRender()" aria-label="Search files">
+    <span class="dm-filter" onclick="dmReload()">⌕ Filter</span>
+  </div>
+  <div class="dm-target" id="dmTarget"></div>
+  <div class="dm-meta"><span class="rf">Recent Files <b id="dmCount">0</b></span><button class="dm-refresh" onclick="dmReload()">↻ Refresh</button></div>
+  <div class="dm-list" id="dmList"></div>
+</aside>
 </body>
 </html>
