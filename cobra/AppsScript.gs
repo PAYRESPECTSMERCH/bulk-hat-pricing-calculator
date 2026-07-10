@@ -80,7 +80,7 @@ function doGet(e) {
     var fid=e.parameter.folderId||FOLDER_ID, folder=DriveApp.getFolderById(fid);
     var files=[], it=folder.getFiles(), n=0; while(it.hasNext()&&n<300){ files.push(fileObj_(it.next())); n++; }
     files.sort(function(a,b){return b.updated-a.updated;});
-    var folders=[], fs=folder.getFolders(), m=0; while(fs.hasNext()&&m<300){ var sf=fs.next(); folders.push({id:sf.getId(),name:sf.getName()}); m++; }
+    var folders=[], fs=folder.getFolders(), m=0; while(fs.hasNext()&&m<300){ var sf=fs.next(); var c=0, cit=sf.getFiles(); while(cit.hasNext()&&c<200){cit.next();c++;} folders.push({id:sf.getId(),name:sf.getName(),count:c}); m++; }
     folders.sort(function(a,b){return a.name.toLowerCase()<b.name.toLowerCase()?-1:1;});
     var parent=""; var pit=folder.getParents(); if(pit.hasNext()) parent=pit.next().getId();
     return json_({ok:true, folder:{id:fid,name:folder.getName(),parent:parent}, folders:folders, files:files});
