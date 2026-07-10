@@ -525,7 +525,7 @@ function render(){const list=listNow();const tb=document.getElementById("rows"),
   if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else{
     tb.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);const m=sMeta(j.status);const num=/^[#]?\d{6,}$/.test(String(j.order).trim());
-      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td>${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td>${folderCell(j)}</td></tr>`;}).join("");
+      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td class="cell" data-i="${i}" data-f="status">${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td class="cell" data-i="${i}" data-f="puff">${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td class="cell" data-i="${i}" data-f="folder">${folderCell(j)}</td></tr>`;}).join("");
     cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
       const pl=[["FRONT","front",""],["BACK","back","b"],["LEFT","left","l"],["RIGHT","right","r"]].map(([lab,key,c])=>{const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${JOBS.indexOf(j)},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
       return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
@@ -708,11 +708,23 @@ async function doUpload(fileList){
   toast("Uploaded ✓"); if(DM.folderId)delete DM.cache[DM.folderId]; loadBrowse(true);
 }
 function attachFile(vi){
-  const f=DM.view[vi]; if(!f||!DM.target)return;
-  const {i,key}=DM.target; closeDM();
-  applyField(i,key,{text:f.name,url:f.url||""},true);
+  const f=DM.view[vi]; if(!f)return;
+  // Attach to the highlighted placement cell if one is selected, else the sidebar's target.
+  let tgt=DM.target;
+  if(SELECTED && PLC.includes(SELECTED.f)) tgt={i:+SELECTED.i,key:SELECTED.f};
+  if(!tgt)return;
+  const {i,key}=tgt;
+  applyField(i,key,{text:attachName(i,key,f),url:f.url||""},true);
   toast("Linked "+key.toUpperCase()+" → "+f.name);
+  // Keep the sidebar open (add to more cells), keep this cell highlighted, refresh the label.
+  DM.target={i,key}; SELECTED={i:+i,f:key}; applySelection();
+  const tg=document.getElementById("dmTarget");
+  if(DM.mode==='attach'){ const j=JOBS[i]; tg.textContent="Attaching to "+key.toUpperCase()+"  ·  "+(j.order||jobTitle(j)); }
 }
+// Display text for an attached placement link. Keep any existing design description
+// (e.g. "3D SPRING LAKE / 5\" W"); only when the cell is empty fall back to the placement label.
+function attachName(i,key,f){ const cur=(fieldGet(JOBS[i],key).text||"").trim();
+  if(cur) return cur; return PLC.includes(key) ? key.toUpperCase() : f.name; }
 
 /* ===== cell selection + inline editing (Order / Details / Thread) + delete-key ===== */
 const FIELD_COL={front:"FRONT",back:"BACK",left:"LEFT",right:"RIGHT",order:"ORDER",details:"DETAILS",thread:"THREAD"};
@@ -735,7 +747,8 @@ function applyField(i,f,val,record){ const j=JOBS[i]; const before=fieldGet(j,f)
   fieldSet(j,f,val.text,val.url); if(f==="status")buildChips(); render(); syncField(i,f,val.text,val.url);
   if(record){ UNDO.push({kind:"field",i,f,before,after:{text:val.text,url:val.url||""}}); if(UNDO.length>200)UNDO.shift(); REDO=[]; updateUndoBtns(); } }
 function commitEdit(val){ if(!EDIT)return; const {i,f}=EDIT; const url=(f==="order")?(JOBS[i].orderUrl||""):""; EDIT=null; applyField(i,f,{text:val,url},true); }
-function clearSelected(){ if(!SELECTED)return; const {i,f}=SELECTED; applyField(i,f,{text:"",url:""},true); }
+const CLEARABLE=["order","details","thread","front","back","left","right","status"];
+function clearSelected(){ if(!SELECTED)return; const {i,f}=SELECTED; if(!CLEARABLE.includes(f))return; applyField(i,f,{text:"",url:""},true); }
 function removeFile(i,key){ applyField(i,key,{text:"",url:""},true); }
 
 /* ===== undo / redo ===== */
