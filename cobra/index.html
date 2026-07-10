@@ -173,6 +173,9 @@
   .plcbox{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;line-height:1.3}
   .plcbox .pnm{font-weight:600;font-size:12.5px}
   .plcbox .psz{color:color-mix(in srgb,var(--muted) 78%,transparent);font-size:12px;font-variant-numeric:tabular-nums}
+  .artb{margin-top:4px;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;font-variant-numeric:tabular-nums;line-height:1}
+  .artb.miss{color:#e6913c}
+  .artb.ok{color:color-mix(in srgb,var(--muted) 65%,transparent)}
   .plcbox .pacts{display:flex;gap:2px;align-items:center;margin-top:1px}
   .plc .flink{color:var(--accent);text-decoration:none;font-weight:600}
   .plc .flink:hover{text-decoration:underline}
@@ -262,11 +265,13 @@
   .plc:hover{background:var(--accent-weak)}
   .jc .pr{cursor:pointer;border-radius:8px;margin:-2px -4px;padding:2px 4px}
   .jc .pr:active{background:var(--accent-weak)}
-  .thread{display:flex;align-items:center;gap:8px;max-width:190px}
+  .thread{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;max-width:210px}
   .sw{display:flex;flex-shrink:0}
   .sw i{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1.4px var(--ring);margin-left:-4px}
   .sw i:first-child{margin-left:0}
   .tlabel{font-size:12.5px;color:var(--ink);line-height:1.25}
+  .tchip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink);line-height:1.25;white-space:nowrap}
+  .tchip i{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 1.4px var(--ring);flex-shrink:0}
   .folder{display:inline-flex;align-items:center;gap:7px;color:var(--accent);font-weight:600;font-size:12.5px;font-variant-numeric:tabular-nums;text-decoration:none}
   .folder:hover{text-decoration:underline}
 
@@ -418,6 +423,17 @@ const COLORS={"yellow gold":"#e0a400","baby blue":"#7dd3fc","royal blue":"#1d4ed
 const PH=Object.keys(COLORS).filter(k=>k.includes(" "));
 function swatches(t){if(!t)return[];let x=String(t).toLowerCase();const f=[];for(const p of PH){if(x.includes(p)){f.push(COLORS[p]);x=x.split(p).join("  ");}}for(const w of Object.keys(COLORS)){if(w.includes(" "))continue;const re=new RegExp("\\b"+w+"\\b");if(re.test(x)){f.push(COLORS[w]);x=x.replace(re,"  ");}}return f.slice(0,3);}
 function threadLabel(t){if(!t)return"";return String(t).replace(/^\s*thread\s*/i,"").replace(/\s+/g," ").trim().replace(/\bwith\b/gi,"w/");}
+function titleCase(s){return String(s).replace(/\b\w/g,c=>c.toUpperCase());}
+// Split a thread string into ordered {name,color} pairs so each swatch can be labeled.
+function threadParts(t){ if(!t) return [];
+  let x=" "+String(t).toLowerCase()+" "; const hits=[];
+  const take=words=>{ for(const w of words){ const re=new RegExp("\\b"+w.replace(/ /g,"\\s+")+"\\b"); const m=re.exec(x);
+    if(m){ hits.push({name:w,color:COLORS[w],pos:m.index}); x=x.slice(0,m.index)+" ".repeat(m[0].length)+x.slice(m.index+m[0].length); } } };
+  take(PH); take(Object.keys(COLORS).filter(k=>!k.includes(" ")));
+  hits.sort((a,b)=>a.pos-b.pos);
+  const seen=new Set(), out=[]; for(const h of hits){ if(seen.has(h.color))continue; seen.add(h.color); out.push({name:titleCase(h.name),color:h.color}); }
+  return out.slice(0,4);
+}
 
 /* ===== placement ===== */
 function parsePlc(cell){if(!cell||!String(cell).trim())return null;let s=String(cell).trim();let size="";const m=s.match(/([\d.]+)\s*["″'’]?\s*W\b/i);if(m){size=m[1].replace(/\.$/,"")+'" W';s=s.replace(m[0],"");}s=s.replace(/\((front|back|left|right)\)/ig,"").replace(/\b(front|back|left|right)\b/ig,"").replace(/[:]/g,"").replace(/\s{2,}/g," ").replace(/[-–—·|]\s*$/,"").trim();if(s.length>24)s=s.slice(0,23).trim()+"…";return{name:s.toUpperCase(),size};}
@@ -493,16 +509,26 @@ function updateSync(){const el=document.getElementById("sync");const t=JOBS.leng
   else if(IS_LIVE)el.innerHTML='<span class="dot live"></span> Live (read-only) · '+t+' jobs';
   else el.innerHTML='<span class="dot samp"></span> Preview data — connect the sheet to go live · '+t+' jobs';}
 
+/* ===== artwork completeness ===== */
+// A placement "needs artwork" when the cell has a spec (design/size) but no file linked yet.
+function artStats(j){let req=0,filled=0;for(const k of ["front","back","left","right"]){if(parsePlc(j[k])){req++;if(String(j[k+"Url"]||"").trim())filled++;}}return{req,filled};}
+function needsArt(j){if(isDone(sMeta(j.status).key))return false;const s=artStats(j);return s.req>0&&s.filled<s.req;}
+
 /* ===== filter chips with counts ===== */
-function counts(){const c={all:JOBS.length};JOBS.forEach(j=>{const k=sMeta(j.status).key;c[k]=(c[k]||0)+1;});return c;}
+function counts(){const c={all:JOBS.length};let na=0;JOBS.forEach(j=>{const k=sMeta(j.status).key;c[k]=(c[k]||0)+1;if(needsArt(j))na++;});c.__na=na;return c;}
 function buildChips(){const c=counts();
   const present=STATUS.filter(s=>c[s.key]).sort((a,b)=>a.rank-b.rank);
-  const chips=[{key:"all",label:"All",dot:"var(--muted)",n:c.all}].concat(present.map(s=>({key:s.key,label:s.label,dot:s.dot,n:c[s.key]})));
+  const chips=[{key:"all",label:"All",dot:"var(--muted)",n:c.all}];
+  if(c.__na)chips.push({key:"needsart",label:"Needs Art",dot:"#e6913c",n:c.__na});
+  chips.push(...present.map(s=>({key:s.key,label:s.label,dot:s.dot,n:c[s.key]})));
   document.getElementById("chips").innerHTML=chips.map(ch=>`<button class="chip-f ${FILTER===ch.key?'on':''}" role="tab" aria-selected="${FILTER===ch.key}" data-key="${esc(ch.key)}"><span class="cdot" style="background:${ch.dot}"></span>${esc(ch.label)}<span class="cnt">${ch.n}</span></button>`).join("");}
 function setFilter(k){FILTER=k;buildChips();render();}
 
 /* ===== render ===== */
-function threadCell(t){const sw=swatches(t).map(c=>`<i style="background:${c}"></i>`).join("");const l=threadLabel(t);if(!l)return'<span class="none">—</span>';return`<div class="thread"><span class="sw">${sw||'<i style="background:var(--line)"></i>'}</span><span class="tlabel">${esc(l)}</span></div>`;}
+function threadCell(t){const parts=threadParts(t);const l=threadLabel(t);
+  if(!parts.length){ if(!l)return'<span class="none">—</span>'; return`<div class="thread"><span class="tlabel">${esc(l)}</span></div>`; }
+  const chips=parts.map(p=>`<span class="tchip"><i style="background:${p.color}"></i>${esc(p.name)}</span>`).join("");
+  return`<div class="thread">${chips}</div>`;}
 function plcCell(c){const p=parsePlc(c);if(!p)return'<span class="none">—</span>';return`<span class="chip"><span class="nm">${esc(p.name)}</span>${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span>`;}
 function plcCellFull(j,i,key){const p=parsePlc(j[key]);const url=j[key+"Url"];
   if(!p) return `<span class="addf" onclick="event.stopPropagation();openDM(${i},'${key}')" title="Attach a file">＋ Add</span>`;
@@ -510,7 +536,11 @@ function plcCellFull(j,i,key){const p=parsePlc(j[key]);const url=j[key+"Url"];
   return `<div class="plcbox"><div class="pnm">${nm}</div>${p.size?`<div class="psz">${esc(p.size)}</div>`:""}<div class="pacts"><span class="attach" onclick="event.stopPropagation();openDM(${i},'${key}')" title="Attach / replace file">📎</span><span class="rmv" onclick="event.stopPropagation();removeFile(${i},'${key}')" title="Remove file">✕</span></div></div>`;}
 function orderCell(j,i){ if(EDIT&&EDIT.i===i&&EDIT.f==='order') return editBox(j.order,false);
   const num=esc(j.order)||'<span class="none">—</span>';
-  return j.orderUrl?`<a class="olink" href="${esc(j.orderUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${num}</a>`:`<span class="order">${num}</span>`; }
+  const link=j.orderUrl?`<a class="olink" href="${esc(j.orderUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${num}</a>`:`<span class="order">${num}</span>`;
+  const a=artStats(j); let badge="";
+  if(a.req){ const done=a.filled>=a.req||isDone(sMeta(j.status).key);
+    badge=`<div class="artb ${done?'ok':'miss'}" title="${a.filled} of ${a.req} placement${a.req===1?'':'s'} have artwork linked">${done?'✓ art':a.filled+'/'+a.req+' art'}</div>`; }
+  return link+badge; }
 function detailsCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='details')?editBox(j.details,true):detailsHTML(j.details); }
 function threadCellR(j,i){ return (EDIT&&EDIT.i===i&&EDIT.f==='thread')?editBox(j.thread,false):threadCell(j.thread); }
 function editBox(v,multi){ v=esc(String(v==null?"":v)); return multi?`<textarea id="editinput" class="celledit">${v}</textarea><span class="edit-hint">Enter = new line · ⌘/Ctrl+Enter to save · Esc to cancel</span>`:`<input id="editinput" class="celledit" value="${v}"><span class="edit-hint">Enter to save · Esc to cancel</span>`; }
@@ -520,7 +550,7 @@ function folderCell(j){const f=j.folder;if(!f||!f.trim())return'<span class="non
   return`<a class="folder" href="javascript:void(0)" onclick="openBrowse('${jss(fid)}','${jss(f)}')">🗂 ${esc(f)}</a>${ext}`;}
 function pill(j,i){const m=sMeta(j.status);const st=m.bg?`background:${m.bg};color:${m.fg};border-color:transparent`:`background:transparent;color:var(--muted);border-color:var(--line)`;return `<button class="pill act" style="${st}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
 function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
-function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
+function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(FILTER==="needsart"){if(!needsArt(j))return false;}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
 function render(){const list=listNow();const tb=document.getElementById("rows"),cd=document.getElementById("cards");
   if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else{
@@ -528,7 +558,9 @@ function render(){const list=listNow();const tb=document.getElementById("rows"),
       return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td class="cell" data-i="${i}" data-f="status">${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td class="cell" data-i="${i}" data-f="puff">${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td class="cell" data-i="${i}" data-f="folder">${folderCell(j)}</td></tr>`;}).join("");
     cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
       const pl=[["FRONT","front",""],["BACK","back","b"],["LEFT","left","l"],["RIGHT","right","r"]].map(([lab,key,c])=>{const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${JOBS.indexOf(j)},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
-      return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
+      const ca=artStats(j); const cadone=ca.filled>=ca.req||isDone(sMeta(j.status).key);
+      const cabadge=ca.req?`<span class="artb ${cadone?'ok':'miss'}">${cadone?'✓ art':ca.filled+'/'+ca.req+' art'}</span>`:"";
+      return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${cabadge}${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
   }
   const dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
   document.getElementById("count").textContent=`Showing ${list.length} of ${JOBS.length} · ${JOBS.length-dn} active · ${dn} done`;
