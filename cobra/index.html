@@ -54,6 +54,8 @@
     --su-cf-bg:#f7e6e6; --su-cf-fg:#9e1414; --su-cf-dot:#9e1414;
     --su-dq-bg:#fbf3d6; --su-dq-fg:#8a6d00; --su-dq-dot:#e6b800;
     --su-hf-bg:#fdf0e0; --su-hf-fg:#b5691a; --su-hf-dot:#ef9430;
+    /* stage group dots */
+    --stg-needs:#d93a34; --stg-active:#8e8e93; --stg-waiting:#e8825f; --stg-done:#16a34a;
   }
   :root[data-theme="dark"]{
     /* Graphite */
@@ -73,6 +75,8 @@
     --su-cf-bg:#3d1616; --su-cf-fg:#ff9c9c; --su-cf-dot:#e05252;
     --su-dq-bg:#3a2c12; --su-dq-fg:#f0b64a; --su-dq-dot:#e6b800;
     --su-hf-bg:#3f2a10; --su-hf-fg:#f5b06a; --su-hf-dot:#ef9430;
+    /* stage group dots */
+    --stg-needs:#ff6b64; --stg-active:#8e8e93; --stg-waiting:#e8825f; --stg-done:#3ecf7a;
   }
 
   *{box-sizing:border-box}
@@ -152,6 +156,18 @@
   .pill.urgent .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
   .pill.urgent::after{content:"⌄";margin-left:1px;font-size:12px;opacity:.6}
   tbody td .pill{white-space:normal;text-align:left;max-width:100%}
+  /* stage group headers */
+  tr.grouphdr td{background:var(--panel-2);border-top:6px solid var(--bg);border-bottom:1px solid var(--line);padding:10px 16px;cursor:pointer}
+  tr.grouphdr:first-child td{border-top:none}
+  tr.grouphdr td:hover{background:var(--hover)}
+  .ghd,.ghd-card{display:flex;align-items:center;gap:10px}
+  .gchev{color:var(--muted);font-size:11px;width:12px;display:inline-block;flex:0 0 auto}
+  .gdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .gname{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--ink)}
+  .gcount{font-size:11px;font-weight:700;color:var(--muted);background:var(--panel);border-radius:20px;padding:1px 9px;font-variant-numeric:tabular-nums}
+  .ghd-card{padding:16px 4px 8px;cursor:pointer}
+  body.grouped .grip{visibility:hidden}
+  .iconbtn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-weak)}
   /* per-column alignment: Order + Front/Back/Left/Right centered; rest left */
   thead th:nth-child(3),tbody td:nth-child(3),
   thead th:nth-child(6),tbody td:nth-child(6),
@@ -358,6 +374,7 @@
     <div class="barspace"></div>
     <button class="iconbtn" id="undoBtn" title="Undo (⌘Z / Ctrl+Z)" aria-label="Undo" onclick="undo()" disabled><span>↶</span></button>
     <button class="iconbtn" id="redoBtn" title="Redo (⌘⇧Z / Ctrl+Y)" aria-label="Redo" onclick="redo()" disabled><span>↷</span></button>
+    <button class="iconbtn" id="groupBtn" title="Group by stage (Needs Action / Active / Waiting / Done)" aria-label="Group by stage" onclick="toggleGroup()"><span>☰</span></button>
     <button class="iconbtn" id="rowh" title="Row height (compact / normal / tall)" aria-label="Change row height" onclick="cycleRowH()"><span>⇕</span></button>
     <button class="iconbtn" id="theme" title="Toggle theme" aria-label="Toggle light or dark theme" onclick="toggleTheme()"><span id="themeIcon">◐</span></button>
     <button class="iconbtn" id="refresh" title="Refresh from sheet" aria-label="Refresh from sheet" onclick="load()"><span>⟳</span></button>
@@ -581,17 +598,41 @@ function pill(j,i){const key=statusKey(j.status);const suf=STATUS_VAR[key]||"una
   return `<button class="pill quiet act" onclick="openPicker(event,${i})" aria-haspopup="true"><span class="qdot" style="background:var(--sq-${suf})"></span>${esc(label)}</button>`;}
 function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
 function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(FILTER==="needsart"){if(!needsArt(j))return false;}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
+/* ===== stage grouping ===== */
+const STAGES=[{key:"needs",name:"Needs Action"},{key:"active",name:"Active"},{key:"waiting",name:"Waiting"},{key:"done",name:"Done"}];
+const STAGE_OF={"UPDATE ARTWORK":"needs","CANNOT FIND ORDER DETAILS":"needs","DESIGN QUESTIONS":"needs","HELP FIND ORDER #":"needs",
+  "":"active","READY":"active","SEND MOCKUP":"active","REVIEW DETAILS":"active",
+  "WAITING ON CUSTOMER APPROVAL":"waiting","CUSTOMER APPROVED":"done","COMPLETED":"done"};
+function stageOf(status){return STAGE_OF[statusKey(status)]||"active";}
+let GROUPED=false, GCOL={};
+(function(){try{GROUPED=localStorage.getItem("cobra-grouped")==="1";GCOL=JSON.parse(localStorage.getItem("cobra-gcol")||"{}")||{};}catch(e){}})();
+function toggleGroup(){GROUPED=!GROUPED;try{localStorage.setItem("cobra-grouped",GROUPED?"1":"0");}catch(e){}updateGroupBtn();render();}
+function toggleStage(k){GCOL[k]=!GCOL[k];try{localStorage.setItem("cobra-gcol",JSON.stringify(GCOL));}catch(e){}render();}
+function updateGroupBtn(){const b=document.getElementById("groupBtn");if(b)b.classList.toggle("on",GROUPED);}
+
+function rowHTML(j){const i=JOBS.indexOf(j);const m=sMeta(j.status);
+  return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td class="cell" data-i="${i}" data-f="status">${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td class="cell" data-i="${i}" data-f="puff">${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td class="cell" data-i="${i}" data-f="folder">${folderCell(j)}</td></tr>`;}
+function cardHTML(j){const i=JOBS.indexOf(j);
+  const pl=[["FRONT","front",""],["BACK","back","b"],["LEFT","left","l"],["RIGHT","right","r"]].map(([lab,key,c])=>{const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${JOBS.indexOf(j)},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
+  const ca=artStats(j); const cadone=ca.filled>=ca.req||isDone(sMeta(j.status).key);
+  const cabadge=ca.req?`<span class="artb ${cadone?'ok':'miss'}">${cadone?'✓ art':ca.filled+'/'+ca.req+' art'}</span>`:"";
+  return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${cabadge}${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}
+
 function render(){const list=listNow();const tb=document.getElementById("rows"),cd=document.getElementById("cards");
+  document.body.classList.toggle("grouped",GROUPED);
   if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
-  else{
-    tb.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);const m=sMeta(j.status);const num=/^[#]?\d{6,}$/.test(String(j.order).trim());
-      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td class="cell" data-i="${i}" data-f="status">${pill(j,i)}</td><td class="order cell" data-i="${i}" data-f="order">${orderCell(j,i)}</td><td class="cell" data-i="${i}" data-f="puff">${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details cell" data-i="${i}" data-f="details">${detailsCellR(j,i)}</td><td class="plc cell" data-i="${i}" data-f="front">${plcCellFull(j,i,'front')}</td><td class="plc cell" data-i="${i}" data-f="back">${plcCellFull(j,i,'back')}</td><td class="plc cell" data-i="${i}" data-f="left">${plcCellFull(j,i,'left')}</td><td class="plc cell" data-i="${i}" data-f="right">${plcCellFull(j,i,'right')}</td><td class="cell" data-i="${i}" data-f="thread">${threadCellR(j,i)}</td><td class="cell" data-i="${i}" data-f="folder">${folderCell(j)}</td></tr>`;}).join("");
-    cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
-      const pl=[["FRONT","front",""],["BACK","back","b"],["LEFT","left","l"],["RIGHT","right","r"]].map(([lab,key,c])=>{const p=parsePlc(j[key]);if(!p)return"";const url=j[key+"Url"];const nm=url?`<a class="flink" href="${esc(url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name);return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${nm}</span><span class="ps">${p.size?esc(p.size):"—"}</span><span class="attach" onclick="openDM(${JOBS.indexOf(j)},'${key}')" title="Attach a file">📎</span></div>`;}).join("");
-      const ca=artStats(j); const cadone=ca.filled>=ca.req||isDone(sMeta(j.status).key);
-      const cabadge=ca.req?`<span class="artb ${cadone?'ok':'miss'}">${cadone?'✓ art':ca.filled+'/'+ca.req+' art'}</span>`:"";
-      return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${cabadge}${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
+  else if(GROUPED){
+    let th="",ch="";
+    for(const st of STAGES){
+      const items=list.filter(j=>stageOf(j.status)===st.key); if(!items.length)continue;
+      const col=!!GCOL[st.key];
+      const head=`<span class="gchev">${col?'▸':'▾'}</span><span class="gdot" style="background:var(--stg-${st.key})"></span><span class="gname">${esc(st.name)}</span><span class="gcount">${items.length}</span>`;
+      th+=`<tr class="grouphdr" data-stage="${st.key}"><td colspan="11"><div class="ghd">${head}</div></td></tr>`+(col?"":items.map(rowHTML).join(""));
+      ch+=`<div class="ghd-card" data-stage="${st.key}">${head}</div>`+(col?"":items.map(cardHTML).join(""));
+    }
+    tb.innerHTML=th; cd.innerHTML=ch;
   }
+  else{ tb.innerHTML=list.map(rowHTML).join(""); cd.innerHTML=list.map(cardHTML).join(""); }
   const dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
   document.getElementById("count").textContent=`Showing ${list.length} of ${JOBS.length} · ${JOBS.length-dn} active · ${dn} done`;
   refreshReorderable();
@@ -631,6 +672,7 @@ function applyThemeIcon(){const t=curTheme();document.getElementById("themeIcon"
 function toggleTheme(){const next=THEMES[(THEMES.indexOf(curTheme())+1)%THEMES.length];document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("cobra-theme",next);}catch(e){}applyThemeIcon();}
 (function(){var t="dark";try{t=localStorage.getItem("cobra-theme")||"dark";}catch(e){}if(THEMES.indexOf(t)===-1)t="dark";document.documentElement.setAttribute("data-theme",t);})();
 applyThemeIcon();
+updateGroupBtn();
 
 document.getElementById("search").addEventListener("keyup",e=>{if(e.key==="Escape"){e.target.value="";render();}});
 
@@ -830,7 +872,8 @@ function redo(){ const cmd=REDO.pop(); if(!cmd)return;
   UNDO.push(cmd); updateUndoBtns(); toast("Redo"); }
 (function(){
   const body=document.getElementById("rows");
-  body.addEventListener("click",e=>{ if(EDIT)return; if(e.target.closest("a,.attach,.addf,.rmv,.pill,.grip")) return; const td=e.target.closest("td.cell"); if(!td){SELECTED=null;applySelection();return;} selectCell(td.dataset.i,td.dataset.f); });
+  body.addEventListener("click",e=>{ if(EDIT)return; const gh=e.target.closest("tr.grouphdr"); if(gh){toggleStage(gh.dataset.stage);return;} if(e.target.closest("a,.attach,.addf,.rmv,.pill,.grip")) return; const td=e.target.closest("td.cell"); if(!td){SELECTED=null;applySelection();return;} selectCell(td.dataset.i,td.dataset.f); });
+  document.getElementById("cards").addEventListener("click",e=>{ const h=e.target.closest(".ghd-card"); if(h)toggleStage(h.dataset.stage); });
   body.addEventListener("dblclick",e=>{ const td=e.target.closest("td.cell"); if(!td)return; if(EDITABLE_TEXT.includes(td.dataset.f)) startEdit(td.dataset.i,td.dataset.f); });
 })();
 document.addEventListener("keydown",e=>{
@@ -868,7 +911,7 @@ function initTable(){
 }
 
 /* ===== drag-to-reorder rows (unfiltered All view; writes new order to sheet) ===== */
-function canReorder(){return FILTER==='all' && !document.getElementById('search').value.trim();}
+function canReorder(){return !GROUPED && FILTER==='all' && !document.getElementById('search').value.trim();}
 function refreshReorderable(){const el=document.getElementById('rows');if(el)el.classList.toggle('reorderable',canReorder());}
 let drag=null;
 function clearDrop(){document.querySelectorAll('#rows tr.drop-before,#rows tr.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));}
