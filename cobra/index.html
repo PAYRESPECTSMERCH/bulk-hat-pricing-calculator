@@ -132,9 +132,9 @@
   .search::placeholder{color:var(--muted);opacity:.8}
 
   /* filter tabs (quiet underline) */
-  .chips{display:flex;gap:18px;margin-bottom:16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior-x:contain}
+  .chips{display:flex;gap:18px;margin-bottom:16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
   .chips::-webkit-scrollbar{display:none}
-  .chip{flex:0 0 auto;background:none;border:none;touch-action:none;padding:5px 1px 10px;font-size:13px;font-weight:600;
+  .chip{flex:0 0 auto;background:none;border:none;touch-action:pan-x;padding:5px 1px 10px;font-size:13px;font-weight:600;
     color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap;
     font-family:inherit;display:inline-flex;align-items:center;gap:7px}
   .chip:hover{color:var(--ink)}
@@ -312,7 +312,9 @@
 
   /* mobile cards */
   .cards{display:none;flex-direction:column;gap:12px}
-  .jc{background:var(--panel);border-radius:16px;padding:15px 16px;box-shadow:var(--sh-md);display:flex;flex-direction:column;gap:11px}
+  .jc{background:var(--panel);border-radius:16px;padding:15px 16px;box-shadow:var(--sh-md);display:flex;flex-direction:column;gap:11px;
+    content-visibility:auto;contain-intrinsic-size:auto 210px;animation:jcIn .18s ease both}
+  @keyframes jcIn{from{opacity:.35}to{opacity:1}}
   .jc .t{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .jc .co{display:flex;align-items:center;gap:8px;min-width:0}
   .jc .o{font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -400,9 +402,9 @@
   .wbc .cap{font-size:10.5px;color:var(--muted);margin-top:6px}
   .today .tempty{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:34px;text-align:center;color:var(--muted);font-size:13.5px}
   /* workbook tabs */
-  .wbtabs{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior-x:contain}
+  .wbtabs{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;overscroll-behavior-x:contain}
   .wbtabs::-webkit-scrollbar{display:none}
-  .wbtab{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:99px;height:36px;width:122px;padding:0 8px;font:inherit;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;white-space:nowrap;flex:0 0 auto;touch-action:none;overflow:hidden;text-overflow:ellipsis}
+  .wbtab{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:99px;height:36px;width:122px;padding:0 8px;font:inherit;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;white-space:nowrap;flex:0 0 auto;touch-action:pan-x;overflow:hidden;text-overflow:ellipsis}
   .wbtab .d{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
   .wbtab b{font-size:10.5px;font-weight:800;color:var(--act);font-variant-numeric:tabular-nums}
   .wbtab:hover{background:var(--hover)}
@@ -775,14 +777,25 @@ raul:[
 function toJob(v,r,links){var j={_row:r||null};WB.columns.forEach(function(c,idx){j[c.key]=v[idx]!=null?String(v[idx]):"";});
   if(links){WB.columns.forEach(function(c){if(c.type==="order"||c.type==="folder"||c.type==="placement")j[c.key+"Url"]=links[c.key]||"";});}return j;}
 
+let WBJOBS={}, LOADSIG={};   // per-workbook: last loaded jobs (instant paint on switch) + change signature (skip no-op re-renders)
 async function load(){
+  const wbId=WB.id;
   const btn=document.getElementById("refresh");btn.classList.add("spin");
   let jobs=null;
-  if(CONFIG.APPS_SCRIPT_URL){try{const res=await fetch(apiURL("action=list"),{cache:"no-store"});if(res.ok){const d=await res.json();const arr=d.rows||d;jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row,r.links));IS_LIVE=true;CAN_WRITE=true;}}catch(e){}}
-  if(!jobs&&CONFIG.USE_LIVE&&CONFIG.SHEET_ID){const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CONFIG.GID}`;try{const res=await fetch(url,{cache:"no-store"});if(res.ok){const p=parseCSV(await res.text()).filter(r=>r.some(c=>c&&c.trim()));let st=0;for(let i=0;i<Math.min(p.length,3);i++){if(p[i].join("|").toUpperCase().includes("STATUS")){st=i+1;break;}}jobs=p.slice(st).map((r,i)=>toJob(r,st+i+1));IS_LIVE=true;CAN_WRITE=false;}}catch(e){}}
+  if(CONFIG.APPS_SCRIPT_URL){try{const res=await fetch(apiURL("action=list"),{cache:"no-store"});
+    if(res.ok){const d=await res.json();if(WB.id!==wbId){btn.classList.remove("spin");return;}   // user switched workbook mid-flight
+      const arr=d.rows||d;jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row,r.links));IS_LIVE=true;CAN_WRITE=true;}}catch(e){}}
+  if(WB.id!==wbId){btn.classList.remove("spin");return;}
+  if(!jobs&&CONFIG.USE_LIVE&&CONFIG.SHEET_ID){const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CONFIG.GID}`;try{const res=await fetch(url,{cache:"no-store"});if(res.ok){const txt=await res.text();if(WB.id!==wbId){btn.classList.remove("spin");return;}const p=parseCSV(txt).filter(r=>r.some(c=>c&&c.trim()));let st=0;for(let i=0;i<Math.min(p.length,3);i++){if(p[i].join("|").toUpperCase().includes("STATUS")){st=i+1;break;}}jobs=p.slice(st).map((r,i)=>toJob(r,st+i+1));IS_LIVE=true;CAN_WRITE=false;}}catch(e){}}
+  if(WB.id!==wbId){btn.classList.remove("spin");return;}
   if(!jobs){jobs=(SAMPLES[WB.id]||[]).map((r,i)=>toJob(r,i+2));IS_LIVE=false;CAN_WRITE=false;}
   JOBS=jobs.filter(j=>j.order||j.details);
-  btn.classList.remove("spin");buildChips();updateSync();render();
+  WBJOBS[wbId]={jobs:JOBS,live:IS_LIVE,canw:CAN_WRITE};
+  btn.classList.remove("spin");
+  const sig=JSON.stringify(JOBS)+"|"+IS_LIVE+CAN_WRITE;
+  if(LOADSIG[wbId]===sig && document.getElementById("rows").innerHTML){ updateSync(); return; }   // nothing changed — no re-render jank
+  LOADSIG[wbId]=sig;
+  buildChips();updateSync();render();
 }
 function updateSync(){const el=document.getElementById("sync");const t=JOBS.length,dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
   if(IS_LIVE&&CAN_WRITE)el.innerHTML='<span class="dot live"></span> Live · two-way sync · '+t+' jobs';
@@ -914,26 +927,16 @@ window.addEventListener("scroll",closeMenu,true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeSheet();closeFolder();closeDM();}});
 document.getElementById("chips").addEventListener("click",e=>{const b=e.target.closest("[data-key]");if(b)setFilter(b.dataset.key);});
 
-/* Manual drag-to-scroll for the horizontal tab rows. iOS Safari refuses to
-   native-scroll these, so we drive scrollLeft from pointer events ourselves
-   (works for touch AND mouse-drag). A real drag suppresses the trailing click. */
+/* Horizontal tab rows: touch scrolling is native (touch-action:pan-x keeps the
+   swipe in the row; iOS supplies real momentum/inertia). This adds mouse-drag
+   scrolling for desktop only; a real drag suppresses the trailing click. */
 function dragScroll(el){ if(!el)return; let st=null;
-  el.addEventListener("pointerdown",e=>{ st={x:e.clientX,sl:el.scrollLeft,moved:false}; },{passive:true});
+  el.addEventListener("pointerdown",e=>{ if(e.pointerType!=="mouse")return; st={x:e.clientX,sl:el.scrollLeft,moved:false}; },{passive:true});
   el.addEventListener("pointermove",e=>{ if(!st)return; const dx=e.clientX-st.x;
-    if(st.moved||Math.abs(dx)>8){ st.moved=true; el.scrollLeft=st.sl-dx; } },{passive:true});
-  el.addEventListener("pointerup",e=>{ if(!st)return;
-    if(st.moved){ el._dragT=Date.now(); }
-    else { // a tap: with touch-action:none some browsers skip the synthetic click — fire it ourselves
-      const t=e.target&&e.target.closest?e.target.closest("[data-key],button,a"):null;
-      if(t){ el._inSynth=true; try{ t.click(); }finally{ el._inSynth=false; el._synthT=Date.now(); } }
-    }
-    st=null; },{passive:true});
-  el.addEventListener("pointercancel",()=>{ if(st&&st.moved)el._dragT=Date.now(); st=null; },{passive:true});
-  el.addEventListener("click",e=>{
-    if(el._inSynth) return;                                                    // our own synthetic click
-    if(el._dragT&&Date.now()-el._dragT<400){ e.preventDefault(); e.stopPropagation(); el._dragT=0; return; }  // trailing click after a drag
-    if(el._synthT&&Date.now()-el._synthT<400){ e.preventDefault(); e.stopPropagation(); el._synthT=0; }        // native duplicate after our synthetic
-  },true);
+    if(st.moved||Math.abs(dx)>6){ st.moved=true; el.scrollLeft=st.sl-dx; } },{passive:true});
+  const end=()=>{ if(st&&st.moved)el._dragT=Date.now(); st=null; };
+  el.addEventListener("pointerup",end,{passive:true}); el.addEventListener("pointercancel",end,{passive:true});
+  el.addEventListener("click",e=>{ if(el._dragT&&Date.now()-el._dragT<400){ e.preventDefault(); e.stopPropagation(); el._dragT=0; } },true);
 }
 dragScroll(document.getElementById("chips"));
 dragScroll(document.getElementById("wbTabs"));
@@ -981,7 +984,12 @@ function setWorkbook(id,filter){ if(LOCKED)return;
   rebuildStatus(); rebuildFields();
   FILTER=filter||"all"; SELECTED=null; EDIT=null; UNDO=[]; REDO=[]; updateUndoBtns();
   DM.cache={}; closeDM();
-  JOBS=[]; initWorkbookUI(); buildTable(); render(); load(); }
+  // Instant paint: last-loaded jobs for this workbook, else the overview's copy; live load refreshes behind it.
+  const c=WBJOBS[id];
+  if(c){ JOBS=c.jobs; IS_LIVE=c.live; CAN_WRITE=c.canw; }
+  else if(OV[id]&&OV[id].length){ JOBS=OV[id]; IS_LIVE=true; CAN_WRITE=false; }
+  else JOBS=[];
+  initWorkbookUI(); buildTable(); buildChips(); updateSync(); render(); load(); }
 initWorkbookUI();
 
 /* ===== cross-workbook overview (owner only): badges + Today rollup ===== */
