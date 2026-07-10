@@ -57,6 +57,18 @@
     --sh-pop:0 10px 34px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);
   }
 
+  :root[data-theme="warm"]{
+    --bg:#f2ede3; --panel:#fbf8f2; --panel-2:#f0eadf; --hover:#f6f1e8;
+    --ink:#2b2620; --muted:#8a8175; --line:#e6ddcd; --line-2:#efe8db;
+    --accent:#b8791f; --accent-weak:#f6ecd6; --brand:#c8871a;
+    --q:#6a6154; --qbg:#eae2d3; --qdot:#a99a82; --m:#a86500; --mbg:#f6e6cc; --mdot:#c98a20;
+    --d:#3f7a3a; --dbg:#e2efd8; --ddot:#4f9a45; --puff:#7c4dff; --puffbg:#efeaff;
+    --focus:#b8791f; --ring:rgba(60,40,10,.18);
+    --sh-sm:0 1px 2px rgba(80,60,20,.06);
+    --sh-md:0 1px 3px rgba(80,60,20,.07),0 12px 30px rgba(80,60,20,.10);
+    --sh-pop:0 8px 30px rgba(80,60,20,.22),0 0 0 1px rgba(80,60,20,.06);
+  }
+
   *{box-sizing:border-box}
   html,body{margin:0}
   body{background:var(--bg);color:var(--ink);
@@ -121,14 +133,38 @@
   .pill.act{cursor:pointer}
   .pill.act::after{content:"⌄";margin-left:1px;font-size:12px;opacity:.6}
   .p-q{background:var(--qbg);color:var(--q)} .p-m{background:var(--mbg);color:var(--m)} .p-d{background:var(--dbg);color:var(--d)}
+  tbody td .pill{white-space:normal;text-align:left;max-width:100%}
   .order{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.2px}
-  .puff{font-size:10px;font-weight:800;color:var(--puff);background:var(--puffbg);border-radius:6px;padding:3px 6px;letter-spacing:.4px;white-space:nowrap}
+  .puff{font-size:10px;font-weight:800;color:#fff;background:#d93a34;border-radius:6px;padding:3px 6px;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 2px rgba(217,58,52,.35)}
   .details{max-width:320px;line-height:1.45;color:var(--ink)}
   .details .qty{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--m);background:var(--mbg);border-radius:6px;padding:2px 7px;white-space:nowrap}
   .details .flag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-weak);border-radius:6px;padding:2px 7px;white-space:nowrap}
   .plc{border-left:1px solid var(--line)}
   .chip .nm{font-weight:600;font-size:12.5px} .chip .sz{color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap}
   .none{color:color-mix(in srgb,var(--muted) 55%,transparent)}
+  .rownum{color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600;font-size:12px;text-align:right;width:34px;white-space:nowrap}
+  th.rownum-h{width:34px;text-align:right}
+  .details .dl{display:block;line-height:1.5}
+  .details .dl b{display:inline-block;min-width:42px;font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--muted);vertical-align:top}
+  .details .dlead{display:block;margin-bottom:3px;font-weight:600}
+  .jc .rn{font-size:11px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;background:var(--panel-2);border-radius:6px;padding:2px 7px;margin-right:2px}
+  /* drag-to-reorder */
+  .rownum{white-space:nowrap}
+  .grip{display:none;cursor:grab;color:var(--muted);font-size:13px;margin-right:5px;touch-action:none;user-select:none;vertical-align:middle}
+  .reorderable .grip{display:inline}
+  .grip:active{cursor:grabbing}
+  tr.dragging{opacity:.45}
+  tr.drop-before td{box-shadow:inset 0 3px 0 -1px var(--accent)}
+  tr.drop-after td{box-shadow:inset 0 -3px 0 -1px var(--accent)}
+  /* column resize */
+  thead th{position:relative}
+  .rz{position:absolute;top:0;right:-1px;width:9px;height:100%;cursor:col-resize;user-select:none;touch-action:none;z-index:3}
+  .rz:hover{background:linear-gradient(var(--accent),var(--accent));background-size:2px 100%;background-position:center;background-repeat:no-repeat;opacity:.5}
+  /* clickable artwork cells */
+  .plc{cursor:pointer}
+  .plc:hover{background:var(--accent-weak)}
+  .jc .pr{cursor:pointer;border-radius:8px;margin:-2px -4px;padding:2px 4px}
+  .jc .pr:active{background:var(--accent-weak)}
   .thread{display:flex;align-items:center;gap:8px;max-width:190px}
   .sw{display:flex;flex-shrink:0}
   .sw i{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1.4px var(--ring);margin-left:-4px}
@@ -227,7 +263,7 @@
     <div class="scroll">
       <table>
         <thead><tr>
-          <th>Status</th><th>Order</th><th>3D</th><th>Details</th>
+          <th class="rownum-h">#</th><th>Status</th><th>Order</th><th>3D</th><th>Details</th>
           <th class="grp">Front</th><th class="grp">Back</th><th class="grp">Left</th><th class="grp">Right</th>
           <th>Thread</th><th>Digitize Folder</th>
         </tr></thead>
@@ -254,7 +290,7 @@
 <script>
 /* ===== CONFIG (see cobra/SETUP.md) ===== */
 const CONFIG={
-  APPS_SCRIPT_URL:"",   // paste /exec URL for live read + write-back
+  APPS_SCRIPT_URL:"https://script.google.com/macros/s/AKfycby1m0Y9Gmn6RghhXrejd7IfP4V_5odyp0T1V7cZDAoNuJJIIEldQwugqHU5UpzF8lzBpw/exec",   // live read + two-way write-back
   SHEET_ID:"1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI",
   GID:"0", USE_LIVE:true
 };
@@ -291,7 +327,20 @@ function detailsHTML(text){if(!text)return'<span class="none">—</span>';let s=
   const q=s.match(/qty\s*[:\-]?\s*(\d+)/i); if(q){extra+=' <span class="qty">Qty '+q[1]+'</span>';s=s.replace(q[0],"");}
   if(/needs?\s+in\s+\w+/i.test(s)){const mm=s.match(/needs?\s+in\s+\w+/i);extra+=' <span class="flag">'+esc(mm[0].replace(/^./,c=>c.toUpperCase()))+'</span>';s=s.replace(mm[0],"");}
   if(/check messages|need more info/i.test(s)){extra+=' <span class="flag">Check messages</span>';s=s.replace(/\(?\s*(check messages|need more info)\s*\)?/ig,"");}
-  s=s.replace(/\bthread\b[\s\S]*$/i,"").replace(/^front:\s*/i,"").replace(/\bfront:|back:|left:|right:/ig,"").replace(/[\/,\-–—]\s*$/,"").replace(/—\s*$/,"").replace(/\s{2,}/g," ").trim();
+  s=s.replace(/\bthread\b[\s\S]*$/i,"").trim();
+  // If the details name placements (FRONT:/BACK:/LEFT:/RIGHT:), break them onto labeled lines
+  if(/\b(FRONT|BACK|LEFT|RIGHT)\s*:/i.test(s)){
+    const parts=s.split(/\b(FRONT|BACK|LEFT|RIGHT)\s*:/i);
+    const lead=(parts[0]||"").replace(/[\/,\-–—]\s*$/,"").trim();
+    let html=lead?'<span class="dlead">'+esc(lead)+'</span>':'';
+    for(let i=1;i<parts.length;i+=2){
+      const lab=parts[i].toUpperCase();
+      const val=(parts[i+1]||"").replace(/[\/,\-–—]\s*$/,"").replace(/\s{2,}/g," ").trim();
+      if(val) html+='<span class="dl"><b>'+lab+'</b> '+esc(val)+'</span>';
+    }
+    return (html||'<span class="none">—</span>')+extra;
+  }
+  s=s.replace(/^front:\s*/i,"").replace(/[\/,\-–—]\s*$/,"").replace(/\s{2,}/g," ").trim();
   if(s.length>140)s=s.slice(0,138)+"…";
   return (esc(s)||'<span class="none">—</span>')+extra;}
 function jobTitle(j){let s=String(j.details||j.front||j.order||"").trim();s=s.replace(/qty\s*[:\-]?\s*\d+/i,"").replace(/\bthread\b[\s\S]*$/i,"").replace(/^front:\s*/i,"").replace(/\(.*?\)/g,"").replace(/[-–—][\s\S]*$/,"").replace(/[\/,]\s*$/,"").replace(/\s{2,}/g," ").trim();if(s.length>40)s=s.slice(0,38).trim()+"…";return s||"—";}
@@ -356,19 +405,20 @@ function threadCell(t){const sw=swatches(t).map(c=>`<i style="background:${c}"><
 function plcCell(c){const p=parsePlc(c);if(!p)return'<span class="none">—</span>';return`<span class="chip"><span class="nm">${esc(p.name)}</span>${p.size?` <span class="sz">${esc(p.size)}</span>`:""}</span>`;}
 function folderCell(f){if(!f||!f.trim())return'<span class="none">—</span>';return`<a class="folder" href="https://drive.google.com/drive/search?q=${encodeURIComponent(f.trim())}" target="_blank" rel="noopener">🗂 ${esc(f)}</a>`;}
 function pill(j,i){const m=sMeta(j.status);const st=m.bg?`background:${m.bg};color:${m.fg};border-color:transparent`:`background:transparent;color:var(--muted);border-color:var(--line)`;return `<button class="pill act" style="${st}" onclick="openPicker(event,${i})" aria-haspopup="true">${esc(m.label)}</button>`;}
-function sortJobs(l){return l.map((j,i)=>({j,i})).sort((a,b)=>(sMeta(a.j.status).rank-sMeta(b.j.status).rank)||(a.i-b.i)).map(x=>x.j);}
+function sortJobs(l){return l;} /* mirror the sheet's row order (manual/drag order preserved) */
 function listNow(){const q=(document.getElementById("search").value||"").toLowerCase().trim();let l=JOBS.filter(j=>{const m=sMeta(j.status);if(FILTER==="all"){}else if(m.key!==FILTER)return false;if(q){const h=[j.order,j.details,j.thread,j.front,j.back,j.left,j.right,j.folder].join(" ").toLowerCase();if(!h.includes(q))return false;}return true;});return sortJobs(l);}
 function render(){const list=listNow();const tb=document.getElementById("rows"),cd=document.getElementById("cards");
-  if(!list.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty">No jobs in this view.</div></td></tr>`;cd.innerHTML=`<div class="empty">No jobs in this view.</div>`;}
   else{
     tb.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);const m=sMeta(j.status);const num=/^[#]?\d{6,}$/.test(String(j.order).trim());
-      return `<tr class="${isDone(m.key)?'completed':'active'}"><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc">${plcCell(j.front)}</td><td class="plc">${plcCell(j.back)}</td><td class="plc">${plcCell(j.left)}</td><td class="plc">${plcCell(j.right)}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
+      return `<tr data-idx="${i}" class="${isDone(m.key)?'completed':'active'}"><td class="rownum"><span class="grip" title="Drag to reorder">⠿</span><span class="rn-n">${j._row||''}</span></td><td>${pill(j,i)}</td><td class="order" style="${num?'':'font-weight:600'}">${esc(j.order)||'<span class="none">—</span>'}</td><td>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':'<span class="none">—</span>'}</td><td class="details">${detailsHTML(j.details)}</td><td class="plc" onclick="openArtwork('Front')" title="Open artwork folder">${plcCell(j.front)}</td><td class="plc" onclick="openArtwork('Back')" title="Open artwork folder">${plcCell(j.back)}</td><td class="plc" onclick="openArtwork('Left')" title="Open artwork folder">${plcCell(j.left)}</td><td class="plc" onclick="openArtwork('Right')" title="Open artwork folder">${plcCell(j.right)}</td><td>${threadCell(j.thread)}</td><td>${folderCell(j.folder)}</td></tr>`;}).join("");
     cd.innerHTML=list.map(j=>{const i=JOBS.indexOf(j);
-      const pl=[["FRONT","",j.front],["BACK","b",j.back],["LEFT","l",j.left],["RIGHT","r",j.right]].map(([lab,c,v])=>{const p=parsePlc(v);if(!p)return"";return`<div class="pr"><span class="ploc ${c}">${lab}</span><span class="pn">${esc(p.name)}</span><span class="ps">${p.size?esc(p.size):"—"}</span></div>`;}).join("");
-      return `<div class="jc"><div class="t"><div class="co"><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
+      const pl=[["FRONT","",j.front],["BACK","b",j.back],["LEFT","l",j.left],["RIGHT","r",j.right]].map(([lab,c,v])=>{const p=parsePlc(v);if(!p)return"";return`<div class="pr" onclick="openArtwork('${lab}')" title="Open artwork folder"><span class="ploc ${c}">${lab}</span><span class="pn">${esc(p.name)}</span><span class="ps">${p.size?esc(p.size):"—"}</span></div>`;}).join("");
+      return `<div class="jc"><div class="t"><div class="co"><span class="rn">${j._row||"·"}</span><span class="o">${esc(j.order)||"—"}</span>${j.puff&&j.puff.trim()?'<span class="puff">3D</span>':""}</div>${pill(j,i)}</div><div class="jt">${esc(jobTitle(j))}</div>${pl?`<div class="pl">${pl}</div>`:""}<div class="b">${threadCell(j.thread)}${folderCell(j.folder)}</div></div>`;}).join("");
   }
   const dn=JOBS.filter(j=>isDone(sMeta(j.status).key)).length;
   document.getElementById("count").textContent=`Showing ${list.length} of ${JOBS.length} · ${JOBS.length-dn} active · ${dn} done`;
+  refreshReorderable();
 }
 
 /* ===== status change (popover desktop / sheet mobile) ===== */
@@ -397,13 +447,95 @@ async function pick(key){if(pickIdx==null)return;const j=JOBS[pickIdx];const pre
 let tT;function toast(m,err){const t=document.getElementById("toast");document.getElementById("toastMsg").textContent=m;t.className="toast show"+(err?" err":"");clearTimeout(tT);tT=setTimeout(()=>t.className="toast"+(err?" err":""),2300);}
 
 /* ===== theme ===== */
-function applyThemeIcon(){const dark=(document.documentElement.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"))==="dark";document.getElementById("themeIcon").textContent=dark?"☀":"☾";}
-function toggleTheme(){const cur=document.documentElement.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");const next=cur==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("cobra-theme",next);}catch(e){}applyThemeIcon();}
-(function(){try{const t=localStorage.getItem("cobra-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+const THEMES=["light","dark","warm"];
+function curTheme(){return document.documentElement.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");}
+function applyThemeIcon(){const t=curTheme();document.getElementById("themeIcon").textContent=t==="dark"?"☾":t==="warm"?"❋":"☀";document.getElementById("theme").title="Theme: "+t+" (tap to switch)";}
+function toggleTheme(){const next=THEMES[(THEMES.indexOf(curTheme())+1)%THEMES.length];document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("cobra-theme",next);}catch(e){}applyThemeIcon();}
+(function(){var t="dark";try{t=localStorage.getItem("cobra-theme")||"dark";}catch(e){}document.documentElement.setAttribute("data-theme",t);})();
 applyThemeIcon();
 
 document.getElementById("search").addEventListener("keyup",e=>{if(e.key==="Escape"){e.target.value="";render();}});
+
+/* ===== artwork folder (file picker v1: opens your Drive folder) ===== */
+const DRIVE_FOLDER="https://drive.google.com/drive/folders/1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";
+function openArtwork(side){window.open(DRIVE_FOLDER,"_blank","noopener");toast((side?side+" · ":"")+"opening artwork folder…");}
+
+/* ===== column resize (drag header edges; widths persist) ===== */
+const COLDEF=[40,182,112,58,290,150,132,132,132,150,150];
+function loadColW(){try{const s=JSON.parse(localStorage.getItem("cobra-colw"));if(Array.isArray(s)&&s.length===COLDEF.length)return s;}catch(e){}return null;}
+function saveColW(w){try{localStorage.setItem("cobra-colw",JSON.stringify(w));}catch(e){}}
+let COLS=null, COLW=loadColW()||COLDEF.slice();
+function initTable(){
+  const table=document.querySelector('.card table');
+  if(!table||table.querySelector('colgroup'))return;
+  const ths=[...table.querySelectorAll('thead th')];
+  const cg=document.createElement('colgroup');
+  ths.forEach((th,i)=>{const c=document.createElement('col');c.style.width=(COLW[i]||COLDEF[i])+'px';cg.appendChild(c);
+    if(i<ths.length-1){const h=document.createElement('span');h.className='rz';h.dataset.col=i;th.appendChild(h);}});
+  table.insertBefore(cg,table.querySelector('thead'));
+  table.style.tableLayout='fixed';table.style.minWidth=COLW.reduce((a,b)=>a+b,0)+'px';
+  COLS=[...cg.querySelectorAll('col')];
+  let rz=null;
+  table.querySelectorAll('.rz').forEach(h=>{
+    h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const i=+h.dataset.col;rz={i};rz.x=e.clientX;rz.w=COLS[i].getBoundingClientRect().width;try{h.setPointerCapture(e.pointerId);}catch(_){}});
+    h.addEventListener('pointermove',e=>{if(!rz)return;const nw=Math.max(46,Math.min(680,rz.w+(e.clientX-rz.x)));COLS[rz.i].style.width=nw+'px';COLW[rz.i]=nw;table.style.minWidth=COLW.reduce((a,b)=>a+b,0)+'px';});
+    h.addEventListener('pointerup',()=>{if(rz){saveColW(COLW);rz=null;}});
+  });
+}
+
+/* ===== drag-to-reorder rows (unfiltered All view; writes new order to sheet) ===== */
+function canReorder(){return FILTER==='all' && !document.getElementById('search').value.trim();}
+function refreshReorderable(){const el=document.getElementById('rows');if(el)el.classList.toggle('reorderable',canReorder());}
+let drag=null;
+function clearDrop(){document.querySelectorAll('#rows tr.drop-before,#rows tr.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));}
+document.getElementById('rows').addEventListener('pointerdown',e=>{
+  const grip=e.target.closest('.grip'); if(!grip)return;
+  if(!canReorder()){toast('Clear filters & search to reorder',true);return;}
+  e.preventDefault();
+  const tr=grip.closest('tr'); drag={from:+tr.dataset.idx,tr,to:null};
+  tr.classList.add('dragging'); try{grip.setPointerCapture(e.pointerId);}catch(_){}
+  document.addEventListener('pointermove',dragMove);
+  document.addEventListener('pointerup',dragUp,{once:true});
+});
+function dragMove(e){
+  if(!drag)return;
+  const rows=[...document.querySelectorAll('#rows tr')]; clearDrop();
+  let placed=false;
+  for(const r of rows){const b=r.getBoundingClientRect();if(e.clientY<b.top+b.height/2){r.classList.add('drop-before');drag.to=+r.dataset.idx;placed=true;break;}}
+  if(!placed){rows[rows.length-1].classList.add('drop-after');drag.to=JOBS.length;}
+}
+function dragUp(){
+  document.removeEventListener('pointermove',dragMove);
+  if(!drag)return;
+  const from=drag.from, to=(drag.to==null?from:drag.to);
+  clearDrop(); if(drag.tr)drag.tr.classList.remove('dragging'); drag=null;
+  if(to===from||to===from+1)return;
+  const fromRow=JOBS[from]._row;
+  const it=JOBS.splice(from,1)[0];
+  const ins=to>from?to-1:to;
+  JOBS.splice(ins,0,it);
+  JOBS.forEach((j,k)=>{j._row=k+2;});
+  render();
+  if(CAN_WRITE)persistMove(fromRow,ins+2);
+  else toast('Reordered (preview — connect the sheet to save)');
+}
+async function persistMove(fromRow,toRow){
+  try{
+    const u=CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+"action=moveRow&from="+fromRow+"&to="+toRow;
+    const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0;
+    toast('Order saved to sheet');
+  }catch(e){toast("Couldn't save order — refreshing",true);load();}
+}
+
 load();
+initTable();
+/* auto-refresh: keep the app near-live with the sheet (only when connected) */
+setInterval(function(){
+  if(!IS_LIVE || document.hidden) return;
+  if(document.getElementById("menu").classList.contains("open")) return;
+  if(document.getElementById("sheet").classList.contains("open")) return;
+  load();
+}, 45000);
 </script>
 </body>
 </html>

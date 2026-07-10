@@ -21,10 +21,13 @@
  *   ?action=setStatus&row=<n>&status=<s> -> { ok:true }
  */
 
-var SHEET_TAB = "";   // "" = first/active tab, or e.g. "Sheet1"
+// Recommended: create a NEW standalone Apps Script project so this does not
+// collide with the sheet's existing bound scripts. It targets the sheet by ID.
+var SHEET_ID = "1Lu4wSwQyc3dn4XTkbY3WXWKkF3SI3I-bI4O8TYm8hsI";
+var SHEET_TAB = "";   // "" = first tab, or e.g. "Sheet1"
 
 function getSheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(SHEET_ID);
   return SHEET_TAB ? ss.getSheetByName(SHEET_TAB) : ss.getSheets()[0];
 }
 
@@ -65,6 +68,30 @@ function doGet(e) {
       sh.getRange(row, info.timestampCol).setValue(new Date());
     }
     return json_({ ok: true, row: row, status: status });
+  }
+
+  if (action === "moveRow") {
+    var from = parseInt(e.parameter.from, 10);
+    var to = parseInt(e.parameter.to, 10);
+    if (!from || !to || from <= info.headerRow || to <= info.headerRow || from === to) {
+      return json_({ ok: false, error: "bad from/to" });
+    }
+    var lastCol = Math.max(sh.getLastColumn(), 10);
+    var src = sh.getRange(from, 1, 1, lastCol);
+    var vals = src.getValues();
+    var rich = src.getRichTextValues();   // preserves hyperlinks in placement cells
+    sh.deleteRow(from);
+    var dest = to > from ? to - 1 : to;   // account for the removed row
+    if (dest > sh.getLastRow()) {
+      sh.insertRowAfter(sh.getLastRow());
+      dest = sh.getLastRow();
+    } else {
+      sh.insertRowBefore(dest);
+    }
+    var tgt = sh.getRange(dest, 1, 1, lastCol);
+    tgt.setValues(vals);
+    tgt.setRichTextValues(rich);
+    return json_({ ok: true, from: from, to: dest });
   }
 
   // action === "list"
