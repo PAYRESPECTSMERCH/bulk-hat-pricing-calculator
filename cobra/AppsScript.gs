@@ -18,10 +18,16 @@ var FOLDER_ID = "1HbzeuYC_WyEnltsaxPz5Wn0DJvAajcG0";   // artwork folder
 var SHEET_TAB = "";
 var FOLDER_MIME = "application/vnd.google-apps.folder";
 
-// Allow the dashboard to target any workbook by passing ?sheetId=... (multi-workbook switcher).
+// Allow the dashboard to target any workbook by passing ?sheetId=... (multi-workbook switcher),
+// and a specific tab by ?gid=... (the number after #gid= in the sheet's URL).
 function getSheet_(e) {
   var id = (e && e.parameter && e.parameter.sheetId) ? e.parameter.sheetId : SHEET_ID;
   var ss = SpreadsheetApp.openById(id);
+  var gid = (e && e.parameter && e.parameter.gid) ? String(e.parameter.gid) : "";
+  if (gid) {
+    var shs = ss.getSheets();
+    for (var i = 0; i < shs.length; i++) { if (String(shs[i].getSheetId()) === gid) return shs[i]; }
+  }
   return SHEET_TAB ? ss.getSheetByName(SHEET_TAB) : ss.getSheets()[0];
 }
 // Map EVERY header cell -> its column index, so setCell works for any workbook's columns.
@@ -42,7 +48,8 @@ function headerInfo_(sh) {
 // Header names whose cells carry Drive/URL hyperlinks worth returning to the client.
 function linkCols_(info) {
   var out = {};
-  var want = ["ORDER","FRONT","BACK","LEFT","RIGHT","DIGITIZE FOLDER","DIGITIZED FOLDERS"];
+  var want = ["ORDER","FRONT","BACK","LEFT","RIGHT","DIGITIZE FOLDER","DIGITIZED FOLDERS","DIGITIZED FOLDER",
+              "ARTWORK LINK #1","ARTWORK LINK #2"];
   for (var k in info.cols) { if (want.indexOf(k) !== -1) out[linkKey_(k)] = info.cols[k]; }
   return out;
 }
@@ -52,7 +59,9 @@ function linkKey_(header) {
   if (header === "BACK") return "back";
   if (header === "LEFT") return "left";
   if (header === "RIGHT") return "right";
-  return "folder"; // DIGITIZE FOLDER / DIGITIZED FOLDERS
+  if (header === "ARTWORK LINK #1") return "art1";
+  if (header === "ARTWORK LINK #2") return "art2";
+  return "folder"; // DIGITIZE FOLDER / DIGITIZED FOLDERS / DIGITIZED FOLDER
 }
 function json_(o){ return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 

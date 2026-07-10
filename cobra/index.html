@@ -484,6 +484,60 @@ const WORKBOOKS=[
       {key:"AT VENDOR",label:"At Vendor",tier:"quiet",stage:"waiting",rank:6,dot:{light:"#e8825f",dark:"#e8825f"}},
       {key:"PULLED",label:"Pulled",tier:"quiet",stage:"done",rank:9,dot:{light:"#16a34a",dark:"#3ecf7a"}}
     ]
+  },
+  {
+    id:"alfredo", name:"Alfredo Production",
+    appsScriptUrl:"https://script.google.com/macros/s/AKfycby1m0Y9Gmn6RghhXrejd7IfP4V_5odyp0T1V7cZDAoNuJJIIEldQwugqHU5UpzF8lzBpw/exec",
+    sheetId:"1TBlSGNtwUlzbSPKuEX5KcyBys9s10U8i6hPS2xLS1iM", gid:"1361357718",
+    artworkFolderId:"",
+    columns:[
+      {key:"status",type:"status",label:"Status",w:170},
+      {key:"order",type:"order",label:"Order",w:130},
+      {key:"details",type:"details",label:"Project",w:250},
+      {key:"qty",type:"text",label:"Qty",w:60,align:"center"},
+      {key:"size",type:"text",label:"Size",w:96,align:"center"},
+      {key:"color",type:"swatch",label:"Color",w:140},
+      {key:"garment",type:"text",label:"Garment",w:170},
+      {key:"art1",type:"placement",label:"Artwork Link #1",w:180},
+      {key:"art2",type:"placement",label:"Artwork Link #2",w:180}
+    ],
+    statuses:[
+      {key:"",label:"Unassigned",tier:"quiet",stage:"active",rank:5,dot:{light:"#b0b0b6",dark:"#8e8e93"}},
+      {key:"READY",label:"Ready",tier:"quiet",stage:"active",rank:1,dot:{light:"#1a6fe0",dark:"#6ea8fe"}},
+      {key:"AT PRINTER",label:"At Printer",tier:"quiet",stage:"waiting",rank:2,dot:{light:"#8b3dd6",dark:"#b48ce9"}},
+      {key:"ON THE WAY",label:"On the Way",tier:"quiet",stage:"waiting",rank:3,dot:{light:"#0e8a89",dark:"#2dd4bf"}},
+      {key:"GARMENTS ORDERED",label:"Garments Ordered",tier:"quiet",stage:"waiting",rank:4,dot:{light:"#e8825f",dark:"#e8825f"}},
+      {key:"COMPLETE",label:"Complete",tier:"quiet",stage:"done",rank:9,dot:{light:"#16a34a",dark:"#3ecf7a"}}
+    ]
+  },
+  {
+    id:"raul", name:"Raul Production",
+    appsScriptUrl:"https://script.google.com/macros/s/AKfycby1m0Y9Gmn6RghhXrejd7IfP4V_5odyp0T1V7cZDAoNuJJIIEldQwugqHU5UpzF8lzBpw/exec",
+    sheetId:"1ebcV60SZ1AV7b5yhKAVbpIc8AxWGgSJfojQVnmtj2QQ", gid:"1391287549",
+    artworkFolderId:"",
+    columns:[
+      {key:"status",type:"status",label:"Status",w:180},
+      {key:"order",type:"order",label:"Order",w:120},
+      {key:"delivery",type:"text",label:"Delivery By",w:130},
+      {key:"puff",type:"badge3d",label:"3D",w:58},
+      {key:"details",type:"details",label:"Details",w:280},
+      {key:"qty",type:"text",label:"Qty",w:60,align:"center"},
+      {key:"color",type:"swatch",label:"Color",w:140},
+      {key:"style",type:"text",label:"Style",w:150},
+      {key:"thread",type:"thread",label:"Thread",w:150},
+      {key:"folder",type:"folder",label:"Digitized Folder",w:150},
+      {key:"prodday",type:"text",label:"Production Day",w:130}
+    ],
+    statuses:[
+      {key:"",label:"Unassigned",tier:"quiet",stage:"active",rank:6,dot:{light:"#b0b0b6",dark:"#8e8e93"}},
+      {key:"NEED TO ORDER",label:"Need to Order",tier:"urgent",stage:"needs",rank:0,dot:{light:"#e6b800",dark:"#e6b800"},fill:{light:{bg:"#fbf3d6",fg:"#8a6d00"},dark:{bg:"#3a2c12",fg:"#f0b64a"}}},
+      {key:"PULL INVENTORY",label:"Pull Inventory",tier:"urgent",stage:"needs",rank:1,dot:{light:"#ef9430",dark:"#ef9430"},fill:{light:{bg:"#fdf0e0",fg:"#b5691a"},dark:{bg:"#3f2a10",fg:"#f5b06a"}}},
+      {key:"IN PRODUCTION",label:"In Production",tier:"quiet",stage:"active",rank:2,dot:{light:"#1a6fe0",dark:"#6ea8fe"}},
+      {key:"GARMENTS AT HOME",label:"Garments at Home",tier:"quiet",stage:"active",rank:3,dot:{light:"#0e8a89",dark:"#2dd4bf"}},
+      {key:"GARMENTS ORDERED",label:"Garments Ordered",tier:"quiet",stage:"waiting",rank:4,dot:{light:"#8b3dd6",dark:"#b48ce9"}},
+      {key:"AT VENDOR",label:"At Vendor",tier:"quiet",stage:"waiting",rank:5,dot:{light:"#e8825f",dark:"#e8825f"}},
+      {key:"COMPLETED",label:"Completed",tier:"quiet",stage:"done",rank:9,dot:{light:"#16a34a",dark:"#3ecf7a"}}
+    ]
   }
 ];
 function wbById(id){for(const w of WORKBOOKS)if(w.id===id)return w;return WORKBOOKS[0];}
@@ -592,6 +646,26 @@ artstitch:[
 ["PULL INVENDORY","","3D","BONUS MAMA LEFT","1","OTHER BRAND","CAMO / NATURAL","CREAM MATCH HAT AND BROWN SIDE",""],
 ["PULLED","","3D","FRONT: LUCK OR SOMETHING LEFT: LEAVE THE LIGHT ON","3","OTHER BRAND","LIGHT PINK / NATURAL","PINK MATCH HAT GREEN / GOLD",""],
 ["PULLED","","","XL GEORGE MASON","1","MOCKNECK","GRAY","",""]
+],
+alfredo:[
+["READY","4201000001","RETRO WAVE","6","ASSORTED","NAVY","MOCKNECK NO SLIT","RETRO WAVE - 10\" W (BEIGE).png",""],
+["AT PRINTER","4201000002","HILLTOP CREST","1","LARGE","GREY (CAMO)","T-SHIRT","",""],
+["AT PRINTER","4201000003","LAKESIDE ROWERS","1","SMALL","SPORT GREY","MOCKNECK (NO SLIT) A/B","",""],
+["ON THE WAY","4201000004","CAMP PINES","3","ASSORTED","CAMO BROWN / KHAKI","T-SHIRT","",""],
+["ON THE WAY","4201000005","HARBORFIT","1","X-LARGE","PINK","MOCKNECK (NO SLIT) A/B","",""],
+["GARMENTS ORDERED","4201000006","SUNRISE CLUB","1","X-LARGE","YELLOW","MOCKNECK (NO SLIT)","",""],
+["COMPLETE","4201000007","VALLEY LOOP","1","MEDIUM","YELLOW","SHORTS","VALLEY SHORTS.png",""],
+["COMPLETE","4201000008","CAL RIDGE","1","LARGE","SPORT GREY","MOCKNECK (NO SLIT)","CAL RIDGE - 12.9\" W (FOREST GREEN).png",""]
+],
+raul:[
+["AT VENDOR","FAIRE","JULY 15","3D","SAGE HOLLOW UPSIDE DOWN","25","GREEN / NATURAL","OTTO CAP 31-069","GREEN","SAGE HOLLOW",""],
+["IN PRODUCTION","","ASAP","","EAGLE LOGO MOCKNECKS","49","","","","","Aimee"],
+["PULL INVENTORY","","JULY 20","","HACIENDA NORTE","9","","VALUCAP","BROWN","","Raul"],
+["GARMENTS ORDERED","4201000010","JULY 17","","FORE THE HAWKS","5","NAVY SOLID","OTTO TRUCKER","NAVY AND GOLD","ADD WHITE ROPE","Raul"],
+["GARMENTS ORDERED","","AUGUST 3","","FROM MONTANA WITH LOVE","10","RED / NATURAL","OTTO CAP 31-069","RED","",""],
+["NEED TO ORDER","","OCT","","KANARY","120","BLACK / NATURAL","OTTO CAP","BLACK","",""],
+["GARMENTS AT HOME","","OCT","","GOLF ROPE HATS","15","BLACK / WHITE","","","",""],
+["COMPLETED","","","3D","BATCH","25","BLACK / NATURAL","OTTO CAP 31-069","BLACK","","Raul"]
 ]
 };
 function toJob(v,r,links){var j={_row:r||null};WB.columns.forEach(function(c,idx){j[c.key]=v[idx]!=null?String(v[idx]):"";});
@@ -789,7 +863,7 @@ function cycleRowH(){const t=document.querySelector(".card table");const cur=t.g
 /* ===== Drive Manager sidebar (attach a file to Front/Back/Left/Right) ===== */
 let DM={files:[],folders:[],view:[],target:null,mode:'attach',folderId:null,folderName:'',stack:[],parent:'',cache:{}};
 function humanSize(n){n=+n||0;if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(0)+" KB";return (n/1048576).toFixed(1)+" MB";}
-function apiURL(qs){return CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+qs+"&sheetId="+encodeURIComponent(WB.sheetId);}
+function apiURL(qs){return CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+qs+"&sheetId="+encodeURIComponent(WB.sheetId)+"&gid="+encodeURIComponent(WB.gid||"");}
 const MOCK_FILES=[
   {name:'KINLEY (RIGHT) - 2.2" W.png',mime:'image/png',size:184000,thumb:'',url:'#'},
   {name:'GRACIE (LEFT) - 1.9" W.png',mime:'image/png',size:172000,thumb:'',url:'#'},
@@ -920,12 +994,13 @@ function attachFile(vi){
 // Display text for an attached placement link. Keep any existing design description
 // (e.g. "3D SPRING LAKE / 5\" W"); only when the cell is empty fall back to the placement label.
 function attachName(i,key,f){ const cur=(fieldGet(JOBS[i],key).text||"").trim();
-  if(cur) return cur; return PLC.includes(key) ? key.toUpperCase() : f.name; }
+  if(cur) return cur; return ["front","back","left","right"].includes(key) ? key.toUpperCase() : f.name; }
 
 /* ===== cell selection + inline editing (Order / Details / Thread) + delete-key ===== */
 // FIELD_COL maps a field key -> the sheet's column header (for setCell); rebuilt per workbook.
-let FIELD_COL={}, EDITABLE_TEXT=[];
-function rebuildFields(){FIELD_COL={};EDITABLE_TEXT=[];WB.columns.forEach(function(c){FIELD_COL[c.key]=c.label.toUpperCase();
+let FIELD_COL={}, EDITABLE_TEXT=[], PLC=[];
+function rebuildFields(){FIELD_COL={};EDITABLE_TEXT=[];PLC=WB.columns.filter(c=>c.type==="placement").map(c=>c.key);
+  WB.columns.forEach(function(c){FIELD_COL[c.key]=c.label.toUpperCase();
   if(["order","details","thread","swatch","text"].includes(c.type))EDITABLE_TEXT.push(c.key);});}
 rebuildFields();
 function applySelection(){
@@ -935,11 +1010,10 @@ function applySelection(){
 function selectCell(i,f){ SELECTED={i:+i,f}; applySelection(); }
 function startEdit(i,f){ if(!EDITABLE_TEXT.includes(f))return; EDIT={i:+i,f}; SELECTED={i:+i,f}; render(); }
 function cancelEdit(){ EDIT=null; render(); }
-const PLC=["front","back","left","right"];
 function fieldGet(j,f){ if(f==="status")return{text:j.status||"",url:""}; if(f==="order")return{text:j.order||"",url:j.orderUrl||""}; if(PLC.includes(f))return{text:j[f]||"",url:j[f+"Url"]||""}; return{text:j[f]||"",url:""}; }
 function fieldSet(j,f,text,url){ if(f==="status"){j.status=text;return;} j[f]=text; if(f==="order")j.orderUrl=url||""; if(PLC.includes(f))j[f+"Url"]=url||""; }
 async function syncField(i,f,text,url){ const j=JOBS[i]; if(!CAN_WRITE||!j._row){ toast("Preview only — connect the sheet to save",true); return; }
-  try{ let u; if(f==="status"){ u=apiURL("action=setStatus&row="+j._row+"&status="+encodeURIComponent(text)); } else { u=apiURL("action=setCell&row="+j._row+"&col="+FIELD_COL[f]+"&text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url||"")); }
+  try{ let u; if(f==="status"){ u=apiURL("action=setStatus&row="+j._row+"&status="+encodeURIComponent(text)); } else { u=apiURL("action=setCell&row="+j._row+"&col="+encodeURIComponent(FIELD_COL[f])+"&text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url||"")); }
     const r=await fetch(u,{cache:"no-store"}); if(!r.ok||(await r.json()).ok===false)throw 0; if(f==="status")updateSync();
   }catch(e){ toast("Couldn't save — refreshing",true); load(); } }
 function applyField(i,f,val,record){ const j=JOBS[i]; const before=fieldGet(j,f); if(before.text===val.text&&(before.url||"")===(val.url||""))return;
