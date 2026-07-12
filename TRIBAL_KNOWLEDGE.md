@@ -329,6 +329,32 @@ existing deployment.
   tap-to-edit, skeleton loaders, native momentum scroll. See `UX-AUDIT.md` for
   the reasoning behind each.
 
+### PWA / installability (Cobra)
+
+Cobra is an installable, offline-capable PWA. `cobra/index.html` links
+`cobra/manifest.json`, sets the iOS install meta (apple-touch-icon,
+`black-translucent` status bar under `viewport-fit=cover`), and registers
+`cobra/service-worker.js`.
+
+**The service worker is deliberately shell-only** (`cobra-shell-v1`). It caches
+*only* same-origin static files (the HTML, manifest, icons) and **passes every
+cross-origin live request straight through, uncached** — Apps Script `/exec`,
+the Sheets `gviz` CSV, and Drive thumbnails/files. This is load-bearing: if the
+SW ever cached those, vendors could see stale job data or intercepted writes.
+Live-data offline behavior is handled separately by the app's own `WBJOBS`
+in-memory/last-good-data cache, not the SW. To push a shell update to installed
+vendors, bump `CACHE_NAME` in `cobra/service-worker.js`.
+
+**Caveat — the installed app can't carry a vendor lock.** Vendor links work via
+`?v=<token>`, but `manifest.json`'s `start_url` is a plain `./index.html` with no
+token (and one manifest is shared by all workbooks, so it *can't* embed a
+per-vendor token). So if a vendor **installs** the PWA, it launches unlocked —
+switcher visible, opening on their last-used workbook (`cobra-wb`) rather than
+locked to theirs. Not a new security hole (tokens were always cosmetic — see
+Access modes), just a UX inconsistency: the browser `?v=` link locks; the
+installed icon doesn't. If real per-vendor isolation ever matters, that's the
+PIN or a proper login, not the token.
+
 ### localStorage keys (so you know what state is client-side)
 
 `cobra-wb` (active workbook), `cobra-theme` (auto/light/dark, default dark),
