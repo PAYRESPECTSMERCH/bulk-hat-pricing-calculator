@@ -111,11 +111,15 @@ saving new pricing.
 - The Etsy fee assumptions (6.5% / 3% + $0.25 / $0.20) are frozen in code from
   whenever this was written. If Etsy changes fees, or you sell somewhere else
   (Shopify), these are wrong and nobody will notice — they're buried.
-- The root `manifest.json` + `service-worker.js` + icons exist, but the root
-  `index.html` **never registers the service worker or links the manifest**.
-  So the calculator is *not* actually an installable/offline PWA despite the
-  scaffolding being present. It's dead scaffolding — either wire it up or ignore
-  it. (Cobra, by contrast, *does* link its manifest.)
+- The calculator **is now a real installable/offline PWA**: `index.html` links
+  `manifest.json`, sets theme-color/apple-touch-icon, and registers
+  `service-worker.js`. The SW (cache `hat-pricing-cache-v2`) precaches the shell
+  (HTML, manifest, both icons) and uses a **network-first** strategy — online
+  users always get the latest version, offline users get the cached copy.
+  *(Historical note: through mid-2026 this scaffolding existed but was never
+  wired in — the manifest/SW were dead files. If offline caching ever "sticks"
+  on a stale version, bump `CACHE_NAME` in `service-worker.js` to force a
+  refresh.)*
 
 ---
 
@@ -353,8 +357,9 @@ existing deployment.
    folders/orders. Off-format data quietly mis-renders.
 9. **Calculator admin edits don't persist** — reload wipes them. Edit the HTML for
    real default changes. And **qty outside 1–9999 crashes** the calc.
-10. **Root PWA scaffolding is dead** — the calculator never registers its service
-    worker or links its manifest.
+10. **Calculator PWA is live** — it links its manifest and registers a
+    network-first service worker (`hat-pricing-cache-v2`). To ship an update to
+    already-installed users, bump `CACHE_NAME` in `service-worker.js`.
 
 ---
 
