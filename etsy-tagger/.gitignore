@@ -1,0 +1,17 @@
+# Session cookies — NEVER commit. This is your logged-in Etsy session.
+storageState.json
+
+# Local secrets / overrides
+.env
+config.local.js
+
+# Node
+node_modules/
+
+# Runtime output
+logs/
+state/*.json
+!state/.gitkeep
+
+# OS
+.DS_Store

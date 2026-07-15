@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- launchd job: run the Etsy tagger sweep on a schedule.
+     Install:   see install-schedule.sh (copies this to ~/Library/LaunchAgents,
+                filling in your real home path, then `launchctl load`s it).
+     Schedule:  every 30 minutes below (StartInterval, in seconds). To run at
+                fixed times of day instead, swap StartInterval for a
+                StartCalendarInterval block. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.payrespects.etsy-tagger</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__APP_DIR__/scripts/run-sweep.sh</string>
+  </array>
+
+  <!-- Every 30 minutes. -->
+  <key>StartInterval</key>
+  <integer>1800</integer>
+
+  <!-- Don't fire while the Mac is asleep; run once on wake if a fire was missed. -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>__APP_DIR__/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__APP_DIR__/logs/launchd.err.log</string>
+</dict>
+</plist>
