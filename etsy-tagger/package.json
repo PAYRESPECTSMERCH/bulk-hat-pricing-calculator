@@ -10,7 +10,9 @@
   "scripts": {
     "login": "node login.js",
     "sweep": "node run.js",
-    "sweep:apply": "node run.js --apply"
+    "sweep:apply": "node run.js --apply",
+    "dump-order": "node dump-order.js",
+    "test-order": "node test-order.js"
   },
   "dependencies": {
     "playwright": "^1.48.0"

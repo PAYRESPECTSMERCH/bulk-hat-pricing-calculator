@@ -35,6 +35,12 @@ export const SETTINGS = {
   headless: bool(process.env.ETSY_HEADLESS, true) && !process.argv.includes('--headed'),
   throttleMs: Number(process.env.ETSY_THROTTLE_MS || 350),
   cobraCsvUrl: process.env.COBRA_SHEET_CSV_URL || '',
+  // PAYRESPECTS ORDERS sheet write path (Apps Script web app — see apps-script/).
+  sheet: {
+    execUrl: process.env.PAYRESPECTS_SHEET_EXEC_URL || '',
+    secret: process.env.PAYRESPECTS_SHEET_SECRET || '',
+    gid: process.env.PAYRESPECTS_SHEET_GID || '728848446',
+  },
   storageStatePath: path.join(ROOT, 'storageState.json'),
   autoTaggedPath: path.join(ROOT, 'state', 'autoTagged.json'),
   origin: 'https://www.etsy.com',
