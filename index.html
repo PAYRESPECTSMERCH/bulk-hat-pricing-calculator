@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dynamic Pricing Bulk Hat Calculator v11 (UI Final Polishing)</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Hat Pricing">
+    <link rel="apple-touch-icon" href="./icon192.png">
     <style>
         body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
         .container { background: #fff; padding: 20px; border-radius: 12px; max-width: 95%; margin: 20px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
@@ -144,6 +150,12 @@ function calculate() {
         Profit per Hat: $${profitPerHat.toFixed(2)}<br>
         Margin %: ${margin.toFixed(2)}%
     `;
+}
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+    });
 }
 </script>
 </body>
