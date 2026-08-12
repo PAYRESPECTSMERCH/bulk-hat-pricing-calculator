@@ -492,6 +492,27 @@
     .jc .b .folder{display:inline-flex;align-items:center;min-height:36px}
     .mi{padding:13px 11px}
   }
+
+  /* ===== login gate (mobile-reliable, replaces native prompt) ===== */
+  .loginGate{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;
+    background:var(--bg);padding:24px;-webkit-tap-highlight-color:transparent}
+  .loginGate.on{display:flex}
+  .loginCard{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;padding:30px 24px 26px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center}
+  .loginMark{width:56px;height:56px;border-radius:15px;margin:0 auto 16px;display:flex;align-items:center;
+    justify-content:center;font-size:26px;color:#fff;background:var(--accent)}
+  .loginTitle{font-size:20px;font-weight:800;letter-spacing:.3px;color:var(--ink)}
+  .loginSub{font-size:13px;color:var(--muted);margin:6px 0 20px}
+  .loginInput{width:100%;padding:14px 15px;border-radius:12px;border:1px solid var(--line);
+    background:var(--bg);color:var(--ink);font-size:16px;box-sizing:border-box;-webkit-appearance:none}
+  .loginInput:focus{outline:none;border-color:var(--accent)}
+  .loginErr{display:none;color:#e5484d;font-size:13px;margin-top:11px;text-align:left;line-height:1.4}
+  .loginBtn{width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:var(--accent);
+    color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+  .loginBtn:active{transform:translateY(1px)}
+  .loginRemember{display:flex;align-items:center;gap:9px;justify-content:center;margin-top:18px;
+    font-size:13px;color:var(--muted);cursor:pointer}
+  .loginRemember input{width:auto;margin:0;transform:translateY(1px)}
 </style>
 </head>
 <body>
@@ -559,6 +580,20 @@
 <div class="toast" id="toast"><span class="tk"></span><span id="toastMsg"></span></div>
 <div class="offline" id="offline" role="status">Can't reach Google — showing last loaded data<button onclick="load()">Retry</button></div>
 <div class="ptr" id="ptr">↻ Release to refresh</div>
+
+<!-- login gate — styled, mobile-reliable sign-in (replaces native prompt) -->
+<div class="loginGate" id="loginGate" role="dialog" aria-modal="true" aria-label="Sign in to PAYRESPECTS OS">
+  <form class="loginCard" onsubmit="submitLogin();return false;">
+    <div class="loginMark" aria-hidden="true">🔒</div>
+    <div class="loginTitle">PAYRESPECTS OS</div>
+    <div class="loginSub">Enter your password to continue</div>
+    <input class="loginInput" id="loginPass" type="password" inputmode="text" autocapitalize="off"
+           autocomplete="current-password" spellcheck="false" placeholder="Password" aria-label="Password">
+    <div class="loginErr" id="loginErr" role="alert"></div>
+    <button class="loginBtn" type="submit">Log In</button>
+    <label class="loginRemember"><input type="checkbox" id="loginRemember" checked> Keep me signed in on this device</label>
+  </form>
+</div>
 
 <script>
 /* ===== CONFIG (see cobra/SETUP.md) ===== */
@@ -827,7 +862,8 @@ async function load(){
   if(CONFIG.APPS_SCRIPT_URL){try{const res=await fetch(apiURL("action=list"),{cache:"no-store"});
     if(res.ok){const d=await res.json();if(WB.id!==wbId){btn.classList.remove("spin");return;}   // user switched workbook mid-flight
       if(d&&d.error==="pin"){btn.classList.remove("spin");if(tok===LOADTOK)LOADING=false;if(askPin())return load();return;}
-      const arr=d.rows||d;if(Array.isArray(arr)){jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row,r.links));IS_LIVE=true;CAN_WRITE=true;}}}catch(e){}}
+      const arr=d.rows||d;if(Array.isArray(arr)){jobs=arr.map(r=>Array.isArray(r)?toJob(r):toJob(r.values,r.row,r.links));IS_LIVE=true;CAN_WRITE=true;
+        LOGIN_TRIED=false; hideLogin(); if(PIN&&REMEMBER){try{localStorage.setItem("cobra-pin",PIN);}catch(e){}}}}}catch(e){}}
   if(WB.id!==wbId){btn.classList.remove("spin");return;}
   if(!jobs&&CONFIG.USE_LIVE&&CONFIG.SHEET_ID){const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CONFIG.GID}`;try{const res=await fetch(url,{cache:"no-store"});if(res.ok){const txt=await res.text();if(WB.id!==wbId){btn.classList.remove("spin");return;}const p=parseCSV(txt).filter(r=>r.some(c=>c&&c.trim()));let st=0;for(let i=0;i<Math.min(p.length,3);i++){if(p[i].join("|").toUpperCase().includes("STATUS")){st=i+1;break;}}jobs=p.slice(st).map((r,i)=>toJob(r,st+i+1));IS_LIVE=true;CAN_WRITE=false;}}catch(e){}}
   if(WB.id!==wbId){btn.classList.remove("spin");return;}
@@ -1260,11 +1296,28 @@ function cycleRowH(){const t=document.querySelector(".card table");const cur=t.g
 /* ===== Drive Manager sidebar (attach a file to Front/Back/Left/Right) ===== */
 let DM={files:[],folders:[],view:[],target:null,mode:'attach',folderId:null,folderName:'',stack:[],parent:'',cache:{}};
 function humanSize(n){n=+n||0;if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(0)+" KB";return (n/1048576).toFixed(1)+" MB";}
-/* Optional access PIN — only used if the backend has one configured (Script Property "PIN").
-   Prompted once, remembered per device; every request carries it. */
+/* Access password — only enforced if the backend has one configured (Script Property "PIN").
+   Sign in once on a styled, mobile-reliable screen; a validated password is remembered on the
+   device so you never have to sign in again (every request carries it). */
 let PIN=""; try{PIN=localStorage.getItem("cobra-pin")||"";}catch(e){}
-function askPin(){ const v=prompt("This dashboard requires an access PIN:"); if(v==null)return false;
-  PIN=v.trim(); try{localStorage.setItem("cobra-pin",PIN);}catch(e){} return true; }
+let REMEMBER=true;              // keep the validated password on this device (one sign-in)
+let LOGIN_TRIED=false;          // becomes true after the first server rejection, to show an error
+function showLogin(err){
+  const gate=document.getElementById("loginGate"); if(!gate)return;
+  const e=document.getElementById("loginErr");
+  if(err){e.textContent=err;e.style.display="block";}else{e.style.display="none";}
+  gate.classList.add("on");
+  setTimeout(()=>{const i=document.getElementById("loginPass"); if(i){i.value="";i.focus();}},60);
+}
+function hideLogin(){ const g=document.getElementById("loginGate"); if(g)g.classList.remove("on"); }
+function submitLogin(){
+  const i=document.getElementById("loginPass"); const v=(i&&i.value||"").trim();
+  if(!v){ showLogin("Please enter your password."); return; }
+  const rm=document.getElementById("loginRemember"); REMEMBER=rm?rm.checked:true;
+  PIN=v; hideLogin(); load();    // validate against the backend; a wrong password re-opens with an error
+}
+/* Called when the backend rejects the request for a missing/incorrect password. */
+function askPin(){ showLogin(LOGIN_TRIED?"Incorrect password — please try again.":""); LOGIN_TRIED=true; return false; }
 function apiURL(qs){return CONFIG.APPS_SCRIPT_URL+(CONFIG.APPS_SCRIPT_URL.includes("?")?"&":"?")+qs+"&sheetId="+encodeURIComponent(WB.sheetId)+"&gid="+encodeURIComponent(WB.gid||"")+(PIN?"&pin="+encodeURIComponent(PIN):"");}
 const MOCK_FILES=[
   {name:'KINLEY (RIGHT) - 2.2" W.png',mime:'image/png',size:184000,thumb:'',url:'#'},
